@@ -1349,7 +1349,7 @@ function initRealTimeCharts() {
 function updateAllCharts() {
   // chart1Phase
   let ds1=[];
-  if(chart1Mode==='v') ds1=[{label:'V-'+chart1PhSel.toUpperCase(),data:[...buf['v'+chart1PhSel.toUpperCase()]],borderColor:['R'=>'#f85149','S'=>'#3fb950','T'=>'#58a6ff'][chart1PhSel.toUpperCase()]||'#f85149',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5}];
+  if(chart1Mode==='v') ds1=[{label:'V-'+chart1PhSel.toUpperCase(),data:[...buf['v'+chart1PhSel.toUpperCase()]],borderColor:({'R':'#f85149','S':'#3fb950','T':'#58a6ff'})[chart1PhSel.toUpperCase()]||'#f85149',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5}];
   else if(chart1Mode==='i') ds1=[{label:'I-'+chart1PhSel.toUpperCase(),data:[...buf['i'+chart1PhSel.toUpperCase()]],borderColor:'#3fb950',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5}];
   else ds1=[{label:'P-'+chart1PhSel.toUpperCase(),data:[...buf['p'+chart1PhSel.toUpperCase()]],borderColor:'#bc8cff',fill:true,backgroundColor:'rgba(188,140,255,0.06)',pointRadius:0,tension:0.3,borderWidth:1.5}];
   c1Phase.data.labels=[...buf.labels]; c1Phase.data.datasets=ds1; c1Phase.update('none');
