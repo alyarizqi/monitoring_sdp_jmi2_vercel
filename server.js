@@ -140,6 +140,16 @@ async function saveAlarmToSupabase(tipe, phase, nilai, threshold, telegramSent) 
   }
 }
 
+async function sendTelegramTo(chatId, message) {
+  if (!TG_TOKEN) return false;
+  const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' })
+  });
+  return res.ok;
+}
+
 // ─── TELEGRAM ─────────────────────────────────────────────────
 async function sendTelegram(message) {
   if (!TG_TOKEN || TG_CHAT_IDS.length === 0) {
@@ -355,6 +365,179 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── POST /api/telegram  (terima command dari Telegram) ────
+if (req.method === 'POST' && req.url === '/api/telegram') {
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  req.on('end', async () => {
+    try {
+      const update = JSON.parse(body);
+      const msg = update.message;
+      if (!msg || !msg.text) { res.writeHead(200); res.end('OK'); return; }
+
+      const chatId = msg.chat.id.toString();
+      const text   = msg.text.trim().split(' ')[0]; // ambil command saja, ignore parameter
+
+      if (text === '/start') {
+        await sendTelegramTo(chatId,
+          'SISTEM MONITORING SDP JMI2\n\n' +
+          'Command:\n' +
+          '/data - Data tegangan & arus\n' +
+          '/alarm - Konfigurasi alarm\n' +
+          '/status - Status sistem\n' +
+          '/help - Bantuan'
+        );
+
+      } else if (text === '/data') {
+        if (!latestData) {
+          await sendTelegramTo(chatId, '⚠️ Belum ada data dari ESP32.');
+        } else {
+          const d  = latestData;
+          const ts = lastSeen
+            ? new Date(lastSeen).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
+            : '--';
+          const reply =
+            'DATA MONITORING SDP JMI2\n\n' +
+            'Waktu: ' + ts + '\n\n' +
+            'PHASE R:\n' +
+            '  Tegangan: ' + Number(d.voltR  ||0).toFixed(2) + ' V\n' +
+            '  Arus    : ' + Number(d.ampR   ||0).toFixed(2) + ' A\n' +
+            '  Daya    : ' + Number(d.powerR ||0).toFixed(2) + ' kW\n\n' +
+            'PHASE S:\n' +
+            '  Tegangan: ' + Number(d.voltS  ||0).toFixed(2) + ' V\n' +
+            '  Arus    : ' + Number(d.ampS   ||0).toFixed(2) + ' A\n' +
+            '  Daya    : ' + Number(d.powerS ||0).toFixed(2) + ' kW\n\n' +
+            'PHASE T:\n' +
+            '  Tegangan: ' + Number(d.voltT  ||0).toFixed(2) + ' V\n' +
+            '  Arus    : ' + Number(d.ampT   ||0).toFixed(2) + ' A\n' +
+            '  Daya    : ' + Number(d.powerT ||0).toFixed(2) + ' kW\n\n' +
+            '3 PHASE:\n' +
+            '  V(RS): ' + Number(d.voltRS  ||0).toFixed(2) + ' V\n' +
+            '  V(ST): ' + Number(d.voltST  ||0).toFixed(2) + ' V\n' +
+            '  V(TR): ' + Number(d.voltTR  ||0).toFixed(2) + ' V\n' +
+            '  Arus : ' + Number(d.amp3P   ||0).toFixed(2) + ' A\n' +
+            '  Daya : ' + Number(d.power3P ||0).toFixed(2) + ' kW\n\n' +
+            'Energi Total: ' + Number(d.kwh ||0).toFixed(2) + ' kWh\n\n' +
+            'THD Tegangan L-N:\n' +
+            '  R: ' + Number(d.thdVoltR||0).toFixed(2) + '%' +
+            '  S: ' + Number(d.thdVoltS||0).toFixed(2) + '%' +
+            '  T: ' + Number(d.thdVoltT||0).toFixed(2) + '%\n\n' +
+            'THD Tegangan L-L:\n' +
+            '  RS: ' + Number(d.thdVoltRS||0).toFixed(2) + '%' +
+            '  ST: ' + Number(d.thdVoltST||0).toFixed(2) + '%' +
+            '  TR: ' + Number(d.thdVoltTR||0).toFixed(2) + '%\n\n' +
+            'THD Arus:\n' +
+            '  R: ' + Number(d.thdAmpR||0).toFixed(2) + '%' +
+            '  S: ' + Number(d.thdAmpS||0).toFixed(2) + '%' +
+            '  T: ' + Number(d.thdAmpT||0).toFixed(2) + '%\n\n' +
+            'WiFi: ' + (d.rssi||'--') + ' dBm | Heap: ' + (d.heap||'--') + ' KB';
+          await sendTelegramTo(chatId, reply);
+        }
+
+      } else if (text === '/alarm') {
+        if (!latestData) {
+          await sendTelegramTo(chatId, '⚠️ Belum ada data dari ESP32.');
+        } else {
+          const d  = latestData;
+          const ts = lastSeen
+            ? new Date(lastSeen).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
+            : '--';
+          const alarmMsg =
+            'ALARM CONFIG PM5350\n\n' +
+            'Waktu: ' + ts + '\n\n' +
+            'OV THD:\n' +
+            '  Val R: '           + Number(d.ovThdValR         ||0).toFixed(2) + ' %\n' +
+            '  Val S: '           + Number(d.ovThdValS         ||0).toFixed(2) + ' %\n' +
+            '  Val T: '           + Number(d.ovThdValT         ||0).toFixed(2) + ' %\n' +
+            '  Pickup: '          + Number(d.ovThdPickup       ||0).toFixed(2) + ' %\n' +
+            '  Pickup Delay: '    + Number(d.ovThdPickupDelay  ||0).toFixed(2) + ' s\n' +
+            '  Dropout: '         + Number(d.ovThdDropout      ||0).toFixed(2) + ' %\n' +
+            '  Dropout Delay: '   + Number(d.ovThdDropoutDelay ||0).toFixed(2) + ' s\n\n' +
+            'PHASE LOSS:\n' +
+            '  Val R: '           + Number(d.phaseLossValR         ||0).toFixed(2) + ' V\n' +
+            '  Val S: '           + Number(d.phaseLossValS         ||0).toFixed(2) + ' V\n' +
+            '  Val T: '           + Number(d.phaseLossValT         ||0).toFixed(2) + ' V\n' +
+            '  Pickup: '          + Number(d.phaseLossPickup       ||0).toFixed(2) + ' V\n' +
+            '  Pickup Delay: '    + Number(d.phaseLossPickupDelay  ||0).toFixed(2) + ' s\n' +
+            '  Dropout: '         + Number(d.phaseLossDropout      ||0).toFixed(2) + ' V\n' +
+            '  Dropout Delay: '   + Number(d.phaseLossDropoutDelay ||0).toFixed(2) + ' s\n\n' +
+            'OV VOLT L-L:\n' +
+            '  Val RS: '  + Number(d.ovVoltLLValRS  ||0).toFixed(2) + ' V\n' +
+            '  Val ST: '  + Number(d.ovVoltLLValST  ||0).toFixed(2) + ' V\n' +
+            '  Val TR: '  + Number(d.ovVoltLLValTR  ||0).toFixed(2) + ' V\n' +
+            '  Pickup: '  + Number(d.ovVoltLLPickup ||0).toFixed(2) + ' V\n' +
+            '  Dropout: ' + Number(d.ovVoltLLDropout||0).toFixed(2) + ' V\n\n' +
+            'UV VOLT L-L:\n' +
+            '  Val RS: '  + Number(d.uvVoltLLValRS  ||0).toFixed(2) + ' V\n' +
+            '  Val ST: '  + Number(d.uvVoltLLValST  ||0).toFixed(2) + ' V\n' +
+            '  Val TR: '  + Number(d.uvVoltLLValTR  ||0).toFixed(2) + ' V\n' +
+            '  Pickup: '  + Number(d.uvVoltLLPickup ||0).toFixed(2) + ' V\n' +
+            '  Dropout: ' + Number(d.uvVoltLLDropout||0).toFixed(2) + ' V\n\n' +
+            'OV VOLT L-N:\n' +
+            '  Val R: '   + Number(d.ovVoltLNValR  ||0).toFixed(2) + ' V\n' +
+            '  Val S: '   + Number(d.ovVoltLNValS  ||0).toFixed(2) + ' V\n' +
+            '  Val T: '   + Number(d.ovVoltLNValT  ||0).toFixed(2) + ' V\n' +
+            '  Pickup: '  + Number(d.ovVoltLNPickup ||0).toFixed(2) + ' V\n' +
+            '  Dropout: ' + Number(d.ovVoltLNDropout||0).toFixed(2) + ' V\n\n' +
+            'UV VOLT L-N:\n' +
+            '  Val R: '   + Number(d.uvVoltLNValR  ||0).toFixed(2) + ' V\n' +
+            '  Val S: '   + Number(d.uvVoltLNValS  ||0).toFixed(2) + ' V\n' +
+            '  Val T: '   + Number(d.uvVoltLNValT  ||0).toFixed(2) + ' V\n' +
+            '  Pickup: '  + Number(d.uvVoltLNPickup ||0).toFixed(2) + ' V\n' +
+            '  Dropout: ' + Number(d.uvVoltLNDropout||0).toFixed(2) + ' V';
+
+          // Split jika > 4000 karakter (sama seperti logika ESP32)
+          if (alarmMsg.length > 4000) {
+            await sendTelegramTo(chatId, alarmMsg.substring(0, 4000));
+            await new Promise(r => setTimeout(r, 500));
+            await sendTelegramTo(chatId, alarmMsg.substring(4000));
+          } else {
+            await sendTelegramTo(chatId, alarmMsg);
+          }
+        }
+
+      } else if (text === '/status') {
+        const online = lastSeen && (Date.now() - new Date(lastSeen).getTime()) < 30000;
+        const ts     = lastSeen
+          ? new Date(lastSeen).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })
+          : 'Belum ada data';
+        const d      = latestData || {};
+        const uptimeSec = d.uptime || 0;
+        const jam    = Math.floor(uptimeSec / 3600);
+        const menit  = Math.floor((uptimeSec % 3600) / 60);
+        const reply  =
+          'STATUS SISTEM\n\n' +
+          'ESP32: '    + (online ? 'ONLINE ✅' : 'OFFLINE ❌') + '\n' +
+          'Last seen: '+ ts + '\n' +
+          'WiFi: '     + (d.rssi  || '--') + ' dBm\n' +
+          'IP: '       + (d.ip    || '--') + '\n' +
+          'Uptime: '   + jam + 'j ' + menit + 'm\n' +
+          'RAM: '      + (d.heap  || '--') + ' KB\n' +
+          'Temp: '     + (d.temp  != null ? Number(d.temp).toFixed(1) : '--') + ' C\n' +
+          'Vercel: OK ✅\n' +
+          'Supabase: ' + (SUPABASE_URL ? 'OK ✅' : 'Belum diset ❌') + '\n' +
+          'Telegram: ' + (TG_TOKEN    ? 'OK ✅' : 'Belum diset ❌');
+        await sendTelegramTo(chatId, reply);
+
+      } else if (text === '/help') {
+        await sendTelegramTo(chatId,
+          'BANTUAN MONITORING SDP JMI2\n\n' +
+          '/data   - Tegangan, arus, daya, THD\n' +
+          '/alarm  - Threshold & konfigurasi alarm\n' +
+          '/status - WiFi, Modbus, Vercel, Supabase\n' +
+          '/start  - Menu utama'
+        );
+      }
+
+      res.writeHead(200); res.end('OK');
+    } catch(e) {
+      console.error('[Telegram webhook]', e.message);
+      res.writeHead(200); res.end('OK'); // selalu 200 ke Telegram
+    }
+  });
+  return;
+}
+  
   // ── GET /status  (health check) ──────────────────────────
   if (req.method === 'GET' && req.url === '/status') {
     jsonRes(res, 200, {
