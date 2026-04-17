@@ -749,6 +749,8 @@ function setApiStatus(state, msg) {
   const pill = document.getElementById('api-pill');
   const txt  = document.getElementById('api-status-text');
   const pillTxt = document.getElementById('api-pill-txt');
+  if (!pill || !txt || !pillTxt) return;  // ← tambah guard ini
+  
   txt.textContent = msg;
   const styles = {
     live:       'background:rgba(63,185,80,0.1);border-color:rgba(63,185,80,0.35);color:var(--accent2)',
@@ -757,11 +759,13 @@ function setApiStatus(state, msg) {
     sim:        'background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.35);color:var(--warn)'
   };
   const labels = { live:'API LIVE', connecting:'CONNECTING', error:'API ERR', sim:'SIMULASI' };
-  pill.style.cssText = `${styles[state]||styles.error};display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--font-title);font-weight:600;letter-spacing:0.5px;border:1px solid`;
-  pill.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:${state==='live'?'pulse':'blink'} 1.5s infinite"></span>`;
+  pill.style.cssText = styles[state] || styles.error;
   pillTxt.textContent = labels[state] || 'API DISC';
-  document.getElementById('pill-online-txt').textContent = state === 'live' ? 'LIVE' : 'SIMULASI';
-  document.getElementById('esp-run-txt').textContent = state === 'live' ? 'RUNNING' : 'SIMULASI';
+  
+  const onlineTxt = document.getElementById('pill-online-txt');
+  const espTxt = document.getElementById('esp-run-txt');
+  if (onlineTxt) onlineTxt.textContent = state === 'live' ? 'LIVE' : 'SIMULASI';
+  if (espTxt) espTxt.textContent = state === 'live' ? 'RUNNING' : 'SIMULASI';
   txt.style.color = state === 'live' ? 'var(--accent2)' : state === 'connecting' ? 'var(--warn)' : 'var(--text3)';
 }
 
