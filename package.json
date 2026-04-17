@@ -1,0 +1,17 @@
+{
+  "name": "esp32-pm5350-dashboard",
+  "version": "2.0.0",
+  "description": "ESP32 PowerLogic PM5350 Dashboard — Vercel + Supabase",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
