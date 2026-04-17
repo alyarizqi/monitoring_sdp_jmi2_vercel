@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ESP32 PowerLogic Monitor — PM5350</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:rgba(48,54,61,0.9);
+  --accent:#58a6ff;--accent2:#3fb950;--warn:#d29922;--danger:#f85149;--purple:#bc8cff;
+  --text1:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --font-mono:'JetBrains Mono',monospace;--font-title:'Rajdhani',sans-serif;--radius:8px;
+}
+body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-size:13px;}
+.app{display:flex;flex-direction:column;min-height:100vh;}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+.header-left{display:flex;align-items:center;gap:12px;}
+.logo-badge{background:linear-gradient(135deg,#1a2744,#0d2040);border:1px solid rgba(88,166,255,0.3);border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:6px;}
+.logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.85)}}
+.logo-text{font-family:var(--font-title);font-size:13px;font-weight:700;color:var(--accent);letter-spacing:1px;}
+.header-title{font-family:var(--font-title);font-size:17px;font-weight:600;letter-spacing:0.5px;}
+.header-sub{font-size:10px;color:var(--text3);margin-top:1px;}
+.status-row{display:flex;align-items:center;gap:8px;}
+.status-pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--font-title);font-weight:600;letter-spacing:0.5px;border:1px solid;}
+.status-pill.online{background:rgba(63,185,80,0.1);border-color:rgba(63,185,80,0.35);color:var(--accent2);}
+.status-pill.modbus{background:rgba(88,166,255,0.1);border-color:rgba(88,166,255,0.35);color:var(--accent);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 1.5s infinite;}
+.time-chip{font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 8px;}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:10px 20px 0;background:var(--bg2);border-bottom:1px solid var(--border);}
+.tab{padding:7px 14px;font-family:var(--font-title);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);transition:all 0.2s;letter-spacing:0.3px;border-radius:4px 4px 0 0;}
+.tab:hover{color:var(--text1);background:var(--bg3);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* API CONFIG BAR (ganti WS config bar) */
+#api-config-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap;}
+#api-config-bar input{background:var(--bg2);border:1px solid var(--border);color:var(--text1);padding:3px 7px;border-radius:4px;font-family:var(--font-mono);font-size:11px;}
+.api-btn{padding:3px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-title);font-weight:600;font-size:11px;border:1px solid;transition:all 0.15s;}
+.api-btn-save{background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:var(--accent);}
+.api-btn-save:hover{background:rgba(88,166,255,0.25);}
+.api-btn-test{background:rgba(248,81,73,0.12);border-color:rgba(248,81,73,0.35);color:var(--danger);}
+.api-btn-test:hover{background:rgba(248,81,73,0.22);}
+.api-btn-warn{background:rgba(210,153,34,0.12);border-color:rgba(210,153,34,0.35);color:var(--warn);}
+.api-btn-warn:hover{background:rgba(210,153,34,0.22);}
+.poll-chip{font-size:10px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--font-title);}
+#poll-countdown{font-weight:700;color:var(--accent);}
+
+/* CONTENT */
+.content{padding:14px 20px;flex:1;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* SECTION LABEL */
+.section-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;font-family:var(--font-title);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* METRIC CARDS */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+.metric-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;}
+.metric-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;}
+.metric-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;position:relative;overflow:hidden;transition:border-color 0.3s;}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--card-accent,var(--accent));opacity:0.7;}
+.metric-card.warn::before{--card-accent:var(--warn);}
+.metric-card.danger::before{--card-accent:var(--danger);}
+.metric-card.ok::before{--card-accent:var(--accent2);}
+.metric-card.purple::before{--card-accent:var(--purple);}
+.mc-label{font-size:9px;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;font-family:var(--font-title);font-weight:600;margin-bottom:5px;}
+.mc-value{font-size:22px;font-weight:600;font-family:var(--font-title);line-height:1;}
+.mc-unit{font-size:11px;color:var(--text2);font-weight:400;margin-left:2px;}
+.mc-sub{font-size:10px;color:var(--text3);margin-top:4px;}
+.badge{position:absolute;top:8px;right:8px;font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--font-title);font-weight:700;letter-spacing:0.5px;}
+.badge-ok{background:rgba(63,185,80,0.15);color:var(--accent2);border:1px solid rgba(63,185,80,0.3);}
+.badge-warn{background:rgba(210,153,34,0.15);color:var(--warn);border:1px solid rgba(210,153,34,0.3);}
+.badge-danger{background:rgba(248,81,73,0.15);color:var(--danger);border:1px solid rgba(248,81,73,0.3);}
+.bar-track{height:3px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;transition:width 0.5s;}
+
+/* CHART PANEL */
+.chart-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;}
+.chart-title{font-family:var(--font-title);font-size:13px;font-weight:600;color:var(--text1);}
+.chart-controls{display:flex;gap:4px;flex-wrap:wrap;}
+.chart-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-title);font-weight:600;transition:all 0.15s;}
+.chart-btn.active{background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:var(--accent);}
+
+/* THD BARS */
+.thd-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+.thd-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.thd-label{font-size:10px;color:var(--text2);width:64px;flex-shrink:0;}
+.thd-bar-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.thd-bar-fill{height:100%;border-radius:4px;transition:width 0.6s;}
+.thd-val{font-size:11px;font-family:var(--font-title);font-weight:600;width:46px;text-align:right;}
+
+/* FAULT CARDS */
+.fault-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px;}
+.fault-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;align-items:center;gap:10px;transition:all 0.3s;}
+.fault-icon{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.fault-name{font-family:var(--font-title);font-size:13px;font-weight:600;}
+.fault-desc{font-size:10px;color:var(--text3);margin-top:2px;}
+.fault-status{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.fault-led{width:10px;height:10px;border-radius:50%;}
+.led-ok{background:var(--accent2);box-shadow:0 0 6px rgba(63,185,80,0.5);}
+.led-warn{background:var(--warn);box-shadow:0 0 6px rgba(210,153,34,0.5);animation:blink 1s infinite;}
+.led-danger{background:var(--danger);box-shadow:0 0 6px rgba(248,81,73,0.5);animation:blink 0.5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ESP PANEL */
+.esp-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+.esp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+.esp-item{background:var(--bg3);border-radius:6px;padding:8px 10px;}
+.esp-item .k{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:var(--font-title);font-weight:600;}
+.esp-item .v{font-size:13px;font-family:var(--font-title);font-weight:600;margin-top:3px;}
+
+/* KWH GAUGE */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;}
+.gauge-svg{width:160px;height:90px;}
+.gauge-val{font-family:var(--font-title);font-size:22px;font-weight:700;color:var(--accent2);text-align:center;margin-top:2px;}
+.gauge-lbl{font-size:10px;color:var(--text3);text-align:center;margin-top:1px;text-transform:uppercase;letter-spacing:0.8px;}
+
+/* LOG TABLE */
+.log-wrap{overflow-x:auto;max-height:520px;overflow-y:auto;}
+.log-table{width:100%;border-collapse:collapse;font-size:10px;white-space:nowrap;}
+.log-table th{padding:6px 8px;text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text3);border-bottom:1px solid var(--border);font-family:var(--font-title);font-weight:600;position:sticky;top:0;background:var(--bg2);z-index:10;}
+.log-table td{padding:5px 8px;border-bottom:1px solid rgba(48,54,61,0.4);color:var(--text2);}
+.log-table tr:hover td{background:var(--bg3);}
+.log-row-danger td{color:var(--danger);}
+.log-row-warn td{color:var(--warn);}
+.log-row-ok td{color:var(--accent2);}
+.log-legend{display:flex;gap:14px;margin-bottom:8px;font-size:10px;}
+.leg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;}
+
+/* INFO BOXES for fault config */
+.info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;}
+.info-box{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+.info-box .ik{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-family:var(--font-title);font-weight:600;}
+.info-box .iv{font-size:14px;font-family:var(--font-title);font-weight:600;margin-top:3px;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px;}
+
+/* col helpers */
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.alert-banner{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);margin-bottom:12px;border:1px solid;font-size:11px;}
+.alert-banner.warn{background:rgba(210,153,34,0.08);border-color:rgba(210,153,34,0.3);color:#e3b341;}
+.alert-banner.danger{background:rgba(248,81,73,0.08);border-color:rgba(248,81,73,0.3);color:var(--danger);}
+.alert-close{margin-left:auto;cursor:pointer;opacity:0.6;}
+
+/* HISTORIS CHART (7 hari) */
+.hist-panel{background:var(--bg2);border:1px solid rgba(88,166,255,0.2);border-radius:var(--radius);padding:14px;margin-bottom:14px;position:relative;}
+.hist-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--purple));border-radius:var(--radius) var(--radius) 0 0;}
+.hist-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px;}
+.hist-badge{font-size:9px;padding:2px 7px;border-radius:3px;background:rgba(88,166,255,0.12);border:1px solid rgba(88,166,255,0.3);color:var(--accent);font-family:var(--font-title);font-weight:700;letter-spacing:0.5px;}
+
+/* TEST ALERT BUTTONS */
+.test-alert-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;flex-wrap:wrap;}
+.test-alert-label{font-size:10px;color:var(--text3);font-family:var(--font-title);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;flex:0 0 auto;}
+.test-btn{padding:5px 14px;border-radius:5px;cursor:pointer;font-family:var(--font-title);font-weight:700;font-size:11px;border:1px solid;transition:all 0.15s;letter-spacing:0.3px;display:flex;align-items:center;gap:5px;}
+.test-btn:disabled{opacity:0.45;cursor:not-allowed;}
+.test-btn-ov{background:rgba(248,81,73,0.12);border-color:rgba(248,81,73,0.4);color:var(--danger);}
+.test-btn-ov:hover:not(:disabled){background:rgba(248,81,73,0.25);}
+.test-btn-uv{background:rgba(210,153,34,0.12);border-color:rgba(210,153,34,0.4);color:var(--warn);}
+.test-btn-uv:hover:not(:disabled){background:rgba(210,153,34,0.25);}
+.test-result{font-size:10px;margin-left:auto;padding:3px 8px;border-radius:4px;display:none;}
+.test-result.ok{background:rgba(63,185,80,0.12);color:var(--accent2);border:1px solid rgba(63,185,80,0.3);}
+.test-result.err{background:rgba(248,81,73,0.12);color:var(--danger);border:1px solid rgba(248,81,73,0.3);}
+
+/* Sim mode badge */
+.sim-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(210,153,34,0.12);color:var(--warn);border:1px solid rgba(210,153,34,0.3);font-family:var(--font-title);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo-badge"><div class="logo-dot"></div><span class="logo-text">ESP32</span></div>
+    <div>
+      <div class="header-title">PowerLogic Monitor</div>
+      <div class="header-sub">Schneider PM5350 · Modbus RTU · Vercel + Supabase</div>
+    </div>
+  </div>
+  <div class="status-row">
+    <div class="status-pill online" id="pill-online"><span class="status-dot"></span><span id="pill-online-txt">SIMULASI</span></div>
+    <div class="status-pill modbus"><span class="status-dot"></span>MODBUS</div>
+    <div class="status-pill" id="api-pill" style="background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.35);color:var(--danger)">
+      <span class="status-dot" style="background:currentColor;animation:blink 1s infinite"></span><span id="api-pill-txt">API DISC</span>
+    </div>
+    <div class="time-chip" id="clock">--:--:--</div>
+  </div>
+</div>
+
+<!-- ===== TABS ===== -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('realtime')">Realtime</div>
+  <div class="tab" onclick="switchTab('historis')">Historis 7 Hari</div>
+  <div class="tab" onclick="switchTab('faults')">Fault Status</div>
+  <div class="tab" onclick="switchTab('waveform')">Waveform</div>
+  <div class="tab" onclick="switchTab('log')">Event Log</div>
+  <div class="tab" onclick="switchTab('device')">Device Info</div>
+</div>
+
+<!-- ===== API CONFIG BAR ===== -->
+<div id="api-config-bar">
+  <span style="color:var(--text3);font-family:var(--font-title);font-weight:600;letter-spacing:0.5px">🌐 Vercel API:</span>
+  <input id="api-url-input" value="" style="width:300px;font-size:11px" placeholder="monitoring-sdp-jmi2-vercel.vercel.app"/>
+  <button class="api-btn api-btn-save" onclick="saveApiUrl()">💾 SIMPAN</button>
+  <span class="poll-chip">Poll: <span id="poll-countdown">--</span>s</span>
+  <span id="api-status-text" style="color:var(--text3);font-size:10px;">Belum terhubung — data simulasi</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+    <!-- Test Alert Buttons (langsung di config bar untuk akses cepat) -->
+    <button class="api-btn api-btn-test" onclick="sendTestAlert('over')" id="btn-test-ov-bar" title="Test Over Voltage Alert [TEST]">⚡ TEST OV</button>
+    <button class="api-btn api-btn-warn" onclick="sendTestAlert('under')" id="btn-test-uv-bar" title="Test Under Voltage Alert [TEST]">⬇ TEST UV</button>
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2)">
+      <input type="checkbox" id="sim-toggle" checked onchange="toggleSim(this.checked)" style="accent-color:var(--accent)"/>
+      <span style="font-family:var(--font-title);font-weight:600;font-size:10px">SIMULASI</span>
+    </label>
+  </div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="content">
+
+<!-- =================== REALTIME PAGE =================== -->
+<div class="page active" id="page-realtime">
+
+  <!-- Metric cards row: Voltage L-N -->
+  <div class="section-label">Tegangan Fasa-Netral (L-N)</div>
+  <div class="metric-grid-3">
+    <div class="metric-card" id="card-vr"><span class="badge badge-ok" id="badge-vr">NORMAL</span>
+      <div class="mc-label">V Phase R–N</div><div class="mc-value" id="val-vr">--<span class="mc-unit">V</span></div>
+      <div class="mc-sub">Nominal 220V · Limit <span style="color:var(--danger)">231V</span>/<span style="color:var(--warn)">209V</span></div></div>
+    <div class="metric-card" id="card-vs"><span class="badge badge-ok" id="badge-vs">NORMAL</span>
+      <div class="mc-label">V Phase S–N</div><div class="mc-value" id="val-vs">--<span class="mc-unit">V</span></div>
+      <div class="mc-sub">Nominal 220V · Limit <span style="color:var(--danger)">231V</span>/<span style="color:var(--warn)">209V</span></div></div>
+    <div class="metric-card" id="card-vt"><span class="badge badge-ok" id="badge-vt">NORMAL</span>
+      <div class="mc-label">V Phase T–N</div><div class="mc-value" id="val-vt">--<span class="mc-unit">V</span></div>
+      <div class="mc-sub">Nominal 220V · Limit <span style="color:var(--danger)">231V</span>/<span style="color:var(--warn)">209V</span></div></div>
+  </div>
+
+  <!-- Metric cards row: Voltage L-L -->
+  <div class="section-label">Tegangan Fasa-Fasa (L-L)</div>
+  <div class="metric-grid-3">
+    <div class="metric-card" id="card-vrs"><span class="badge badge-ok" id="badge-vrs">NORMAL</span>
+      <div class="mc-label">V R–S (L-L)</div><div class="mc-value" id="val-vrs">--<span class="mc-unit">V</span></div>
+      <div class="mc-sub">Nominal 380V · Limit <span style="color:var(--danger)">400V</span>/<span style="color:var(--warn)">360V</span></div></div>
+    <div class="metric-card" id="card-vst"><span class="badge badge-ok" id="badge-vst">NORMAL</span>
+      <div class="mc-label">V S–T (L-L)</div><div class="mc-value" id="val-vst">--<span class="mc-unit">V</span></div>
+      <div class="mc-sub">Nominal 380V · Limit <span style="color:var(--danger)">400V</span>/<span style="color:var(--warn)">360V</span></div></div>
+    <div class="metric-card" id="card-vtr"><span class="badge badge-ok" id="badge-vtr">NORMAL</span>
+      <div class="mc-label">V T–R (L-L)</div><div class="mc-value" id="val-vtr">--<span class="mc-unit">V</span></div>
+      <div class="mc-sub">Nominal 380V · Limit <span style="color:var(--danger)">400V</span>/<span style="color:var(--warn)">360V</span></div></div>
+  </div>
+
+  <!-- Current -->
+  <div class="section-label">Arus (Current)</div>
+  <div class="metric-grid">
+    <div class="metric-card ok">
+      <div class="mc-label">Arus Phase R</div><div class="mc-value" id="val-ir">--<span class="mc-unit">A</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bar-ir" style="background:var(--accent2);width:0%"></div></div></div>
+    <div class="metric-card ok">
+      <div class="mc-label">Arus Phase S</div><div class="mc-value" id="val-is">--<span class="mc-unit">A</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bar-is" style="background:var(--accent2);width:0%"></div></div></div>
+    <div class="metric-card ok">
+      <div class="mc-label">Arus Phase T</div><div class="mc-value" id="val-it">--<span class="mc-unit">A</span></div>
+      <div class="bar-track"><div class="bar-fill" id="bar-it" style="background:var(--accent2);width:0%"></div></div></div>
+    <div class="metric-card">
+      <div class="mc-label">Arus 3P</div><div class="mc-value" id="val-i3p">--<span class="mc-unit">A</span></div>
+      <div class="mc-sub">Total 3-phase</div></div>
+  </div>
+
+  <!-- Power -->
+  <div class="section-label">Daya (Power)</div>
+  <div class="metric-grid">
+    <div class="metric-card">
+      <div class="mc-label">Daya R</div><div class="mc-value" id="val-pr">--<span class="mc-unit">kW</span></div></div>
+    <div class="metric-card">
+      <div class="mc-label">Daya S</div><div class="mc-value" id="val-ps">--<span class="mc-unit">kW</span></div></div>
+    <div class="metric-card">
+      <div class="mc-label">Daya T</div><div class="mc-value" id="val-pt">--<span class="mc-unit">kW</span></div></div>
+    <div class="metric-card ok">
+      <div class="mc-label">Daya 3P Total</div><div class="mc-value" id="val-p3p">--<span class="mc-unit">kW</span></div></div>
+  </div>
+
+  <!-- KWh Gauge -->
+  <div class="chart-panel" style="display:flex;flex-direction:row;align-items:center;gap:20px;min-height:140px;margin-bottom:12px;">
+    <div style="flex:0 0 auto;">
+      <div class="chart-title" style="margin-bottom:6px">⚡ Energi Konsumsi</div>
+      <div class="gauge-wrap">
+        <svg class="gauge-svg" viewBox="0 0 200 110" id="gauge-svg">
+          <defs><linearGradient id="ggrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#3fb950"/><stop offset="60%" stop-color="#d29922"/><stop offset="100%" stop-color="#f85149"/>
+          </linearGradient></defs>
+          <path d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16" stroke-linecap="round"/>
+          <path id="gauge-arc" d="M20,100 A80,80 0 0,1 180,100" fill="none" stroke="url(#ggrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="251 251" stroke-dashoffset="251"/>
+          <line id="gauge-needle" x1="100" y1="100" x2="100" y2="28" stroke="#e6edf3" stroke-width="2" stroke-linecap="round" transform="rotate(-90,100,100)"/>
+          <circle cx="100" cy="100" r="5" fill="var(--bg3)" stroke="#e6edf3" stroke-width="1.5"/>
+          <text x="20" y="115" fill="var(--text3)" font-size="9" font-family="Rajdhani">0</text>
+          <text x="170" y="115" fill="var(--text3)" font-size="9" font-family="Rajdhani">MAX</text>
+        </svg>
+        <div class="gauge-val" id="kwh-val">-- kWh</div>
+        <div class="gauge-lbl">Total Energy Consumption</div>
+      </div>
+    </div>
+    <div style="flex:1;border-left:1px solid var(--border);padding-left:20px;">
+      <div style="font-size:10px;color:var(--text3);font-family:var(--font-title);font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">Ringkasan Daya</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="esp-item"><div class="k">P-R</div><div class="v" id="kwh-pr" style="color:var(--danger)">-- kW</div></div>
+        <div class="esp-item"><div class="k">P-S</div><div class="v" id="kwh-ps" style="color:var(--accent2)">-- kW</div></div>
+        <div class="esp-item"><div class="k">P-T</div><div class="v" id="kwh-pt" style="color:var(--accent)">-- kW</div></div>
+        <div class="esp-item"><div class="k">P-3P Total</div><div class="v" id="kwh-p3p" style="color:var(--purple)">-- kW</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts: 1-Phase trend (60 detik realtime) -->
+  <div class="chart-panel">
+    <div class="chart-header">
+      <span class="chart-title">Trend 1-Phase (60 detik)</span>
+      <div class="chart-controls">
+        <span class="chart-btn active" id="c1btn-v" onclick="setChart1Mode('v',this)">Tegangan L-N</span>
+        <span class="chart-btn" id="c1btn-i" onclick="setChart1Mode('i',this)">Arus</span>
+        <span class="chart-btn" id="c1btn-p" onclick="setChart1Mode('p',this)">Daya</span>
+        <span style="border-left:1px solid var(--border);margin:0 4px;"></span>
+        <span class="chart-btn active" id="c1ph-r" onclick="setChart1Phase('r',this)">R</span>
+        <span class="chart-btn" id="c1ph-s" onclick="setChart1Phase('s',this)">S</span>
+        <span class="chart-btn" id="c1ph-t" onclick="setChart1Phase('t',this)">T</span>
+      </div>
+    </div>
+    <div style="position:relative;height:160px;"><canvas id="chart1Phase"></canvas></div>
+  </div>
+
+  <!-- Charts: 3-Phase trend -->
+  <div class="chart-panel">
+    <div class="chart-header">
+      <span class="chart-title">Trend 3-Phase (60 detik)</span>
+      <div class="chart-controls">
+        <span class="chart-btn active" id="c3btn-vll" onclick="setChart3Mode('vll',this)">Tegangan L-L</span>
+        <span class="chart-btn" id="c3btn-i" onclick="setChart3Mode('i',this)">Arus 3P</span>
+        <span class="chart-btn" id="c3btn-p" onclick="setChart3Mode('p',this)">Daya 3P</span>
+      </div>
+    </div>
+    <div style="position:relative;height:160px;"><canvas id="chart3Phase"></canvas></div>
+  </div>
+
+  <!-- THD Bars: 1-Phase -->
+  <div class="section-label">THD 1-Phase</div>
+  <div class="thd-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="chart-title">Total Harmonic Distortion — 1 Phase</div>
+      <div class="chart-controls">
+        <span class="chart-btn active" id="thd1ph-r" onclick="setTHD1Phase('r',this)">Phase R</span>
+        <span class="chart-btn" id="thd1ph-s" onclick="setTHD1Phase('s',this)">Phase S</span>
+        <span class="chart-btn" id="thd1ph-t" onclick="setTHD1Phase('t',this)">Phase T</span>
+      </div>
+    </div>
+    <div id="thd1-phase-label" style="font-size:10px;color:var(--text3);margin-bottom:8px;">Phase R</div>
+    <div class="thd-row"><span class="thd-label" id="thd1-vlabel" style="color:var(--danger)">V-R (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar1-v" style="background:var(--danger)"></div></div><span class="thd-val" id="tval1-v" style="color:var(--danger)">--%</span></div>
+    <div class="thd-row"><span class="thd-label" id="thd1-ilabel" style="color:#ff8c69">I-R</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar1-i" style="background:#ff8c69"></div></div><span class="thd-val" id="tval1-i" style="color:#ff8c69">--%</span></div>
+    <div style="font-size:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3)">
+      Limit THD: <strong style="color:var(--warn)">8%</strong> · Status: <strong id="thd1-status">--</strong>
+    </div>
+  </div>
+
+  <!-- THD Bars: 3-Phase -->
+  <div class="section-label">THD 3-Phase</div>
+  <div class="thd-panel">
+    <div class="chart-title" style="margin-bottom:10px">Total Harmonic Distortion Analysis — 3 Phase</div>
+    <div class="thd-row"><span class="thd-label" style="color:var(--danger)">V-R (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vr" style="background:var(--danger)"></div></div><span class="thd-val" id="tval3-vr" style="color:var(--danger)">--%</span></div>
+    <div class="thd-row"><span class="thd-label" style="color:var(--accent2)">V-S (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vs" style="background:var(--accent2)"></div></div><span class="thd-val" id="tval3-vs" style="color:var(--accent2)">--%</span></div>
+    <div class="thd-row"><span class="thd-label" style="color:var(--accent)">V-T (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vt" style="background:var(--accent)"></div></div><span class="thd-val" id="tval3-vt" style="color:var(--accent)">--%</span></div>
+    <div class="thd-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span class="thd-label" style="color:#ff8c69">I-R</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-ir" style="background:#ff8c69"></div></div><span class="thd-val" id="tval3-ir" style="color:#ff8c69">--%</span></div>
+    <div class="thd-row"><span class="thd-label" style="color:#6ee36e">I-S</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-is" style="background:#6ee36e"></div></div><span class="thd-val" id="tval3-is" style="color:#6ee36e">--%</span></div>
+    <div class="thd-row"><span class="thd-label" style="color:#87ceeb">I-T</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-it" style="background:#87ceeb"></div></div><span class="thd-val" id="tval3-it" style="color:#87ceeb">--%</span></div>
+    <div style="font-size:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3)">
+      Status: <strong id="thd3-status">--</strong>
+    </div>
+  </div>
+
+</div><!-- end realtime page -->
+
+<!-- =================== HISTORIS PAGE (BARU) =================== -->
+<div class="page" id="page-historis">
+
+  <!-- Test Alert Buttons -->
+  <div class="test-alert-row">
+    <span class="test-alert-label">🔔 Simulasi Telegram Alert</span>
+    <button class="test-btn test-btn-ov" onclick="sendTestAlert('over')" id="btn-test-ov">⚡ Test Over Voltage <span class="sim-badge">TEST</span></button>
+    <button class="test-btn test-btn-uv" onclick="sendTestAlert('under')" id="btn-test-uv">⬇ Test Under Voltage <span class="sim-badge">TEST</span></button>
+    <span style="font-size:10px;color:var(--text3)">→ Notif dikirim ke semua Chat ID · Label [TEST]</span>
+    <div id="test-result" class="test-result"></div>
+  </div>
+
+  <!-- Historical chart: Voltage L-N 7 hari -->
+  <div class="hist-panel">
+    <div class="hist-header">
+      <div>
+        <div class="chart-title">📈 Historis Tegangan L-N — 7 Hari Terakhir</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">Data dari Supabase · interval 10 detik · rolling window</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="hist-badge">7 HARI</span>
+        <div class="chart-controls">
+          <span class="chart-btn active" id="hbtn-vln" onclick="setHistMode('vln',this)">V L-N</span>
+          <span class="chart-btn" id="hbtn-vll" onclick="setHistMode('vll',this)">V L-L</span>
+          <span class="chart-btn" id="hbtn-amp" onclick="setHistMode('amp',this)">Arus</span>
+          <span class="chart-btn" id="hbtn-pwr" onclick="setHistMode('pwr',this)">Daya</span>
+          <span class="chart-btn" id="hbtn-kwh" onclick="setHistMode('kwh',this)">kWh</span>
+        </div>
+        <button class="chart-btn" onclick="fetchHistoricalData()" id="hist-refresh-btn" style="background:rgba(88,166,255,0.12);border-color:rgba(88,166,255,0.3);color:var(--accent);">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="hist-loading" style="display:none;text-align:center;padding:20px;color:var(--text3);font-size:11px;">
+      <span style="animation:blink 1s infinite;display:inline-block;">⏳</span> Mengambil data dari Supabase...
+    </div>
+    <div style="position:relative;height:220px;"><canvas id="chartHistoris"></canvas></div>
+    <div style="display:flex;gap:20px;margin-top:8px;flex-wrap:wrap;">
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Max 7D V-R</div><div class="v" id="hist-max-vr" style="color:var(--danger)">--</div></div>
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Min 7D V-R</div><div class="v" id="hist-min-vr" style="color:var(--warn)">--</div></div>
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Avg 7D V-R</div><div class="v" id="hist-avg-vr" style="color:var(--accent)">--</div></div>
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Max 7D V-S</div><div class="v" id="hist-max-vs" style="color:var(--danger)">--</div></div>
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Min 7D V-S</div><div class="v" id="hist-min-vs" style="color:var(--warn)">--</div></div>
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Avg 7D V-S</div><div class="v" id="hist-avg-vs" style="color:var(--accent)">--</div></div>
+      <div class="esp-item" style="flex:1;min-width:100px;"><div class="k">Total Records</div><div class="v" id="hist-count" style="color:var(--purple)">--</div></div>
+    </div>
+  </div>
+
+  <!-- Historical chart: Voltage L-L 7 hari -->
+  <div class="hist-panel">
+    <div class="hist-header">
+      <div>
+        <div class="chart-title">📊 Historis Tegangan L-L — 7 Hari Terakhir</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">RS / ST / TR phase-to-phase voltage trend</div>
+      </div>
+      <span class="hist-badge">7 HARI</span>
+    </div>
+    <div style="position:relative;height:180px;"><canvas id="chartHistLL"></canvas></div>
+  </div>
+
+  <!-- Historical Alarm Log -->
+  <div class="section-label">Riwayat Alarm — 7 Hari</div>
+  <div class="chart-panel" style="padding:0;overflow:hidden;">
+    <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);">
+      <span style="font-family:var(--font-title);font-size:12px;font-weight:600;">Alarm History dari Supabase</span>
+      <button class="chart-btn" onclick="fetchAlarmHistory()" style="margin-left:auto">↻ Load Alarm</button>
+    </div>
+    <div class="log-wrap" style="max-height:300px;">
+      <table class="log-table">
+        <thead><tr>
+          <th>Timestamp</th><th>Tipe</th><th>Phase</th><th>Nilai</th><th>Threshold</th><th>Telegram</th>
+        </tr></thead>
+        <tbody id="alarm-history-body">
+          <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Klik "Load Alarm" untuk memuat riwayat alarm dari Supabase</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- end historis page -->
+
+<!-- =================== FAULTS PAGE =================== -->
+<div class="page" id="page-faults">
+
+  <div class="section-label">Status Proteksi & Fault Detection</div>
+  <div class="fault-grid">
+    <div class="fault-card"><div class="fault-icon" style="background:rgba(248,81,73,0.1)">⚡</div>
+      <div><div class="fault-name">Over Voltage L-N</div><div class="fault-desc">Limit: &gt;231V (L-N)</div>
+      <div style="font-size:10px;margin-top:3px;" id="fc-ovln-val">Vmax: --V</div></div>
+      <div class="fault-status"><div class="fault-led led-ok" id="led-ovln"></div><span style="font-size:9px;color:var(--text3)" id="txt-ovln">NORMAL</span></div></div>
+    <div class="fault-card"><div class="fault-icon" style="background:rgba(210,153,34,0.1)">⬇</div>
+      <div><div class="fault-name">Under Voltage L-N</div><div class="fault-desc">Limit: &lt;209V (L-N)</div>
+      <div style="font-size:10px;margin-top:3px;" id="fc-uvln-val">Vmin: --V</div></div>
+      <div class="fault-status"><div class="fault-led led-ok" id="led-uvln"></div><span style="font-size:9px;color:var(--text3)" id="txt-uvln">NORMAL</span></div></div>
+    <div class="fault-card"><div class="fault-icon" style="background:rgba(248,81,73,0.1)">⚡</div>
+      <div><div class="fault-name">Over Voltage L-L</div><div class="fault-desc">Limit: &gt;400V (L-L)</div>
+      <div style="font-size:10px;margin-top:3px;" id="fc-ovll-val">Vmax: --V</div></div>
+      <div class="fault-status"><div class="fault-led led-ok" id="led-ovll"></div><span style="font-size:9px;color:var(--text3)" id="txt-ovll">NORMAL</span></div></div>
+    <div class="fault-card"><div class="fault-icon" style="background:rgba(210,153,34,0.1)">⬇</div>
+      <div><div class="fault-name">Under Voltage L-L</div><div class="fault-desc">Limit: &lt;360V (L-L)</div>
+      <div style="font-size:10px;margin-top:3px;" id="fc-uvll-val">Vmin: --V</div></div>
+      <div class="fault-status"><div class="fault-led led-ok" id="led-uvll"></div><span style="font-size:9px;color:var(--text3)" id="txt-uvll">NORMAL</span></div></div>
+    <div class="fault-card"><div class="fault-icon" style="background:rgba(188,140,255,0.1)">〰</div>
+      <div><div class="fault-name">THD Violation</div><div class="fault-desc">Limit: &gt;8% THD V/I</div>
+      <div style="font-size:10px;margin-top:3px;" id="fc-thd-val">THD max: --%</div></div>
+      <div class="fault-status"><div class="fault-led led-ok" id="led-thd"></div><span style="font-size:9px;color:var(--text3)" id="txt-thd">NORMAL</span></div></div>
+    <div class="fault-card"><div class="fault-icon" style="background:rgba(248,81,73,0.1)">✕</div>
+      <div><div class="fault-name">Phase Loss</div><div class="fault-desc">Kehilangan fasa R/S/T</div>
+      <div style="font-size:10px;margin-top:3px;" id="fc-pl-val">Phase: R✓ S✓ T✓</div></div>
+      <div class="fault-status"><div class="fault-led led-ok" id="led-pl"></div><span style="font-size:9px;color:var(--text3)" id="txt-pl">NORMAL</span></div></div>
+  </div>
+
+  <!-- Fault Config Info -->
+  <div class="section-label">Fault Config (dari ESP32)</div>
+  <div class="info-grid">
+    <div class="info-box"><div class="ik">OV THD Pickup</div><div class="iv" id="fi-ovthd" style="color:var(--warn)">--</div></div>
+    <div class="info-box"><div class="ik">OV Volt L-N Pickup</div><div class="iv" id="fi-ovvln" style="color:var(--danger)">--</div></div>
+    <div class="info-box"><div class="ik">UV Volt L-N Pickup</div><div class="iv" id="fi-uvvln" style="color:var(--warn)">--</div></div>
+    <div class="info-box"><div class="ik">OV Volt L-L Pickup</div><div class="iv" id="fi-ovvll" style="color:var(--danger)">--</div></div>
+    <div class="info-box"><div class="ik">UV Volt L-L Pickup</div><div class="iv" id="fi-uvvll" style="color:var(--warn)">--</div></div>
+    <div class="info-box"><div class="ik">Phase Loss Pickup</div><div class="iv" id="fi-ploss" style="color:var(--danger)">--</div></div>
+    <div class="info-box"><div class="ik">OV Dropout L-N</div><div class="iv" id="fi-ovvln-do" style="color:var(--text2)">--</div></div>
+    <div class="info-box"><div class="ik">UV Dropout L-N</div><div class="iv" id="fi-uvvln-do" style="color:var(--text2)">--</div></div>
+  </div>
+
+  <div class="section-label">Grafik Fault — Over/Under Voltage (60 detik)</div>
+  <div class="chart-panel">
+    <div class="chart-header">
+      <span class="chart-title">Over &amp; Under Voltage Trend</span>
+      <div class="chart-controls">
+        <span class="chart-btn active" id="fuv-btn-ovll" onclick="setFaultUVMode('ovll',this)">OV L-L</span>
+        <span class="chart-btn" id="fuv-btn-uvll" onclick="setFaultUVMode('uvll',this)">UV L-L</span>
+        <span class="chart-btn" id="fuv-btn-ovln" onclick="setFaultUVMode('ovln',this)">OV L-N</span>
+        <span class="chart-btn" id="fuv-btn-uvln" onclick="setFaultUVMode('uvln',this)">UV L-N</span>
+      </div>
+    </div>
+    <div style="position:relative;height:150px;"><canvas id="chartFaultUV"></canvas></div>
+  </div>
+
+  <div class="section-label">Grafik Fault — Phase Loss (60 detik)</div>
+  <div class="chart-panel">
+    <div class="chart-header"><span class="chart-title">Phase Loss Voltage Trend (R/S/T)</span></div>
+    <div style="position:relative;height:150px;"><canvas id="chartFaultPL"></canvas></div>
+  </div>
+
+</div><!-- end faults page -->
+
+<!-- =================== WAVEFORM PAGE =================== -->
+<div class="page" id="page-waveform">
+  <div class="section-label">Waveform — 1 Phase</div>
+  <div class="chart-panel">
+    <div class="chart-header">
+      <span class="chart-title" id="wave1-title">Sinusoidal Phase R</span>
+      <div class="chart-controls">
+        <span class="chart-btn active" id="w1btn-v" onclick="setWave1Mode('v',this)">Tegangan</span>
+        <span class="chart-btn" id="w1btn-i" onclick="setWave1Mode('i',this)">Arus</span>
+        <span class="chart-btn" id="w1btn-vi" onclick="setWave1Mode('vi',this)">V+I</span>
+        <span style="border-left:1px solid var(--border);margin:0 4px;"></span>
+        <span class="chart-btn active" id="w1ph-r" onclick="setWave1Phase('r',this)">Phase R</span>
+        <span class="chart-btn" id="w1ph-s" onclick="setWave1Phase('s',this)">Phase S</span>
+        <span class="chart-btn" id="w1ph-t" onclick="setWave1Phase('t',this)">Phase T</span>
+      </div>
+    </div>
+    <canvas id="wave1Canvas" style="width:100%;height:180px;display:block;"></canvas>
+  </div>
+
+  <div class="section-label">Waveform — 3 Phase (R/S/T)</div>
+  <div class="chart-panel">
+    <div class="chart-header">
+      <span class="chart-title">Sinusoidal 3-Phase</span>
+      <div class="chart-controls">
+        <span class="chart-btn active" id="w3btn-v" onclick="setWave3Mode('v',this)">Tegangan</span>
+        <span class="chart-btn" id="w3btn-i" onclick="setWave3Mode('i',this)">Arus</span>
+        <span class="chart-btn" id="w3btn-vi" onclick="setWave3Mode('vi',this)">V+I</span>
+      </div>
+    </div>
+    <canvas id="wave3Canvas" style="width:100%;height:180px;display:block;"></canvas>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;">
+      <div class="esp-item"><div class="k">Frekuensi</div><div class="v" id="wv-freq" style="color:var(--accent)">-- Hz</div></div>
+      <div class="esp-item"><div class="k">Sudut R–S</div><div class="v" style="color:var(--accent2)">120.0°</div></div>
+      <div class="esp-item"><div class="k">Sudut S–T</div><div class="v" style="color:var(--accent)">120.0°</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== LOG PAGE =================== -->
+<div class="page" id="page-log">
+  <div class="section-label">Event Log — PM5350 Data Snapshot (Realtime)</div>
+  <div class="log-legend">
+    <span><span class="leg-dot" style="background:var(--danger)"></span>Over Voltage</span>
+    <span><span class="leg-dot" style="background:var(--warn)"></span>Under Voltage</span>
+    <span><span class="leg-dot" style="background:var(--accent2)"></span>Normal</span>
+  </div>
+  <div class="chart-panel" style="padding:0;overflow:hidden;">
+    <div class="log-wrap">
+      <table class="log-table">
+        <thead><tr>
+          <th>Timestamp</th>
+          <th>V-R(V)</th><th>V-S(V)</th><th>V-T(V)</th>
+          <th>I-R(A)</th><th>I-S(A)</th><th>I-T(A)</th>
+          <th>P-R(kW)</th><th>P-S(kW)</th><th>P-T(kW)</th>
+          <th>V-RS(V)</th><th>V-ST(V)</th><th>V-TR(V)</th>
+          <th>I-3P(A)</th><th>P-3P(kW)</th><th>KWh</th>
+          <th>THDV-R%</th><th>THDV-S%</th><th>THDV-T%</th>
+          <th>THDV-RS%</th><th>THDV-ST%</th><th>THDV-TR%</th>
+          <th>THDI-R%</th><th>THDI-S%</th><th>THDI-T%</th>
+          <th>thdi-R%</th><th>thdi-S%</th><th>thdi-T%</th>
+          <th>OvThdR</th><th>OvThdS</th><th>OvThdT</th>
+          <th>PlossR</th><th>PlossS</th><th>PlossT</th>
+          <th>OvLL-A(R)</th><th>OvLL-B(S)</th><th>OvLL-C(T)</th><th>OvLL-Pkup</th><th>OvLL-Drop</th>
+          <th>UvLL-A(R)</th><th>UvLL-B(S)</th><th>UvLL-C(T)</th><th>UvLL-Pkup</th><th>UvLL-Drop</th>
+          <th>OvLN-A(R)</th><th>OvLN-B(S)</th><th>OvLN-C(T)</th><th>OvLN-Pkup</th><th>OvLN-Drop</th>
+          <th>UvLN-A(R)</th><th>UvLN-B(S)</th><th>UvLN-C(T)</th><th>UvLN-Pkup</th><th>UvLN-Drop</th>
+        </tr></thead>
+        <tbody id="log-body">
+          <tr><td colspan="54" style="text-align:center;padding:20px;color:var(--text3)">Menunggu data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DEVICE PAGE =================== -->
+<div class="page" id="page-device">
+  <div class="section-label">ESP32 Device Status</div>
+  <div class="esp-panel">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:44px;height:44px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;">🔌</div>
+      <div>
+        <div style="font-family:var(--font-title);font-size:15px;font-weight:700">ESP32 DevKit</div>
+        <div style="font-size:10px;color:var(--text3)">Firmware v3.0.0 · FreeRTOS · POST → Vercel API</div>
+      </div>
+      <div class="status-pill online" style="margin-left:auto"><span class="status-dot"></span><span id="esp-run-txt">SIMULASI</span></div>
+    </div>
+    <div class="esp-grid">
+      <div class="esp-item"><div class="k">CPU Freq</div><div class="v" style="color:var(--accent)">240 MHz</div></div>
+      <div class="esp-item"><div class="k">Free Heap</div><div class="v" id="esp-heap" style="color:var(--accent2)">-- KB</div></div>
+      <div class="esp-item"><div class="k">Uptime</div><div class="v" id="esp-uptime">--</div></div>
+      <div class="esp-item"><div class="k">WiFi RSSI</div><div class="v" id="esp-rssi" style="color:var(--accent)">-- dBm</div></div>
+      <div class="esp-item"><div class="k">IP Address</div><div class="v" id="esp-ip" style="font-size:11px">--</div></div>
+      <div class="esp-item"><div class="k">Temperature</div><div class="v" id="esp-temp" style="color:var(--warn)">-- °C</div></div>
+      <div class="esp-item"><div class="k">POST Interval</div><div class="v" style="color:var(--purple)">10 detik</div></div>
+      <div class="esp-item"><div class="k">Poll Interval</div><div class="v" style="color:var(--accent2)">3-5 dtk</div></div>
+      <div class="esp-item"><div class="k">Server</div><div class="v" style="color:var(--accent);font-size:11px">Vercel + Supabase</div></div>
+    </div>
+  </div>
+
+  <!-- Server Status -->
+  <div class="section-label" style="margin-top:12px">Server & Database Status</div>
+  <div class="esp-panel">
+    <div class="esp-grid">
+      <div class="esp-item"><div class="k">Vercel API</div><div class="v" id="srv-vercel" style="color:var(--text3)">--</div></div>
+      <div class="esp-item"><div class="k">Supabase DB</div><div class="v" id="srv-supabase" style="color:var(--text3)">--</div></div>
+      <div class="esp-item"><div class="k">Last ESP32 POST</div><div class="v" id="srv-last-seen" style="font-size:10px;color:var(--text3)">--</div></div>
+      <div class="esp-item"><div class="k">DB Records (7D)</div><div class="v" id="srv-db-count" style="color:var(--purple)">--</div></div>
+      <div class="esp-item"><div class="k">Telegram Bot</div><div class="v" id="srv-telegram" style="color:var(--text3)">--</div></div>
+      <div class="esp-item"><div class="k">Alert Cooldown</div><div class="v" style="color:var(--warn)">5 menit/fase</div></div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:12px">Arsitektur Sistem</div>
+  <div class="esp-panel" style="font-size:10px;color:var(--text2);line-height:1.8;">
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text2);background:var(--bg3);padding:12px;border-radius:6px;line-height:2;">
+      <span style="color:var(--accent)">ESP32</span> → POST /api/data (tiap 10 dtk) → <span style="color:var(--accent2)">Vercel API</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--purple)">Supabase</span> (simpan · 7 hari rolling)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span style="color:var(--accent)">Browser</span> ← poll /api/latest (tiap 3-5 dtk) ← <span style="color:var(--accent2)">Vercel API</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓ (jika threshold violated)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--warn)">Telegram Bot</span> → semua Chat ID
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:12px">Register Map — PM5350 (Modbus address = display address - 1)</div>
+  <div class="section-label" style="font-size:9px;margin-top:8px">Tegangan Fasa-Fasa (L-L) · addr 3019 · 6 reg</div>
+  <div class="esp-panel" style="padding:8px">
+    <div class="esp-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="esp-item"><div class="k">V R-S · reg 3019–3020</div><div class="v" style="color:var(--accent);font-size:11px">display: 3020 · float32</div></div>
+      <div class="esp-item"><div class="k">V S-T · reg 3021–3022</div><div class="v" style="color:var(--accent);font-size:11px">display: 3022 · float32</div></div>
+      <div class="esp-item"><div class="k">V T-R · reg 3023–3024</div><div class="v" style="color:var(--accent);font-size:11px">display: 3024 · float32</div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end .content -->
+</div><!-- end .app -->
+
+<script>
+// =============================================================
+// CONSTANTS
+// =============================================================
+const VOLT_OVER    = 231.0;
+const VOLT_DROP    = 209.0;
+const VOLT_3P_OVER = 400.0;
+const VOLT_3P_DROP = 360.0;
+const MAX_POINTS   = 60;
+const POLL_INTERVAL_MS = 4000; // 4 detik polling
+
+// =============================================================
+// STATE
+// =============================================================
+let simMode = true, simInterval = null;
+let pollInterval = null, pollCountdownInterval = null, pollCountdownVal = 4;
+let apiUrl = '';
+let espUptime = 0;
+let chart1Mode='v', chart1PhSel='r', chart3Mode='vll', faultUVMode='ovll';
+let wave1Mode='v', wave1PhSel='r', wave3Mode='v';
+let wave1Frame=null, wave3Frame=null, wave1Phase=0, wave3Phase=0;
+let histMode = 'vln';
+let historicalData = [];
+
+const buf = {
+  vR:[], vS:[], vT:[], vRS:[], vST:[], vTR:[],
+  iR:[], iS:[], iT:[], i3P:[],
+  pR:[], pS:[], pT:[], p3P:[],
+  labels:[]
+};
+const fbuf = {
+  vR:[], vS:[], vT:[], vRS:[], vST:[], vTR:[],
+  thdR:[], thdS:[], thdT:[],
+  labels:[]
+};
+const logRows = [];
+let c1Phase=null, c3Phase=null, cFaultOV=null, cFaultUV=null, cFaultPL=null;
+let cHistoris=null, cHistLL=null;
+let latestData = {};
+let staticConfig = {};
+let thd1PhSel = 'r';
+
+// =============================================================
+// API URL MANAGEMENT
+// =============================================================
+function saveApiUrl() {
+  apiUrl = document.getElementById('api-url-input').value.trim().replace(/\/$/, '');
+  localStorage.setItem('pm5350_api_url', apiUrl);
+  if (apiUrl) {
+    startPolling();
+    document.getElementById('sim-toggle').checked = false;
+    toggleSim(false);
+    setApiStatus('connecting', 'Menghubungkan ke ' + apiUrl + '...');
+  }
+}
+
+function loadApiUrl() {
+  const saved = localStorage.getItem('pm5350_api_url');
+  if (saved) {
+    apiUrl = saved;
+    document.getElementById('api-url-input').value = saved;
+  }
+  // Auto-detect kalau dibuka dari domain Vercel
+  if (!saved && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.hostname !== '') {
+    apiUrl = window.location.protocol + '//' + window.location.host;
+    document.getElementById('api-url-input').value = apiUrl;
+  }
+}
+
+function setApiStatus(state, msg) {
+  const pill = document.getElementById('api-pill');
+  const txt  = document.getElementById('api-status-text');
+  const pillTxt = document.getElementById('api-pill-txt');
+  txt.textContent = msg;
+  const styles = {
+    live:       'background:rgba(63,185,80,0.1);border-color:rgba(63,185,80,0.35);color:var(--accent2)',
+    connecting: 'background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.35);color:var(--warn)',
+    error:      'background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.35);color:var(--danger)',
+    sim:        'background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.35);color:var(--warn)'
+  };
+  const labels = { live:'API LIVE', connecting:'CONNECTING', error:'API ERR', sim:'SIMULASI' };
+  pill.style.cssText = `${styles[state]||styles.error};display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--font-title);font-weight:600;letter-spacing:0.5px;border:1px solid`;
+  pill.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:currentColor;animation:${state==='live'?'pulse':'blink'} 1.5s infinite"></span>`;
+  pillTxt.textContent = labels[state] || 'API DISC';
+  document.getElementById('pill-online-txt').textContent = state === 'live' ? 'LIVE' : 'SIMULASI';
+  document.getElementById('esp-run-txt').textContent = state === 'live' ? 'RUNNING' : 'SIMULASI';
+  txt.style.color = state === 'live' ? 'var(--accent2)' : state === 'connecting' ? 'var(--warn)' : 'var(--text3)';
+}
+
+// =============================================================
+// HTTP POLLING
+// =============================================================
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  if (pollCountdownInterval) clearInterval(pollCountdownInterval);
+  pollData(); // langsung poll sekarang
+  pollInterval = setInterval(pollData, POLL_INTERVAL_MS);
+  startPollCountdown();
+}
+
+function stopPolling() {
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  if (pollCountdownInterval) { clearInterval(pollCountdownInterval); pollCountdownInterval = null; }
+  document.getElementById('poll-countdown').textContent = '--';
+}
+
+function startPollCountdown() {
+  if (pollCountdownInterval) clearInterval(pollCountdownInterval);
+  pollCountdownVal = Math.floor(POLL_INTERVAL_MS / 1000);
+  document.getElementById('poll-countdown').textContent = pollCountdownVal;
+  pollCountdownInterval = setInterval(() => {
+    pollCountdownVal = Math.max(0, pollCountdownVal - 1);
+    document.getElementById('poll-countdown').textContent = pollCountdownVal;
+    if (pollCountdownVal === 0) pollCountdownVal = Math.floor(POLL_INTERVAL_MS / 1000);
+  }, 1000);
+}
+
+async function pollData() {
+  if (!apiUrl || simMode) return;
+  try {
+    const res = await fetch(apiUrl + '/api/latest', { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    setApiStatus('live', 'Terhubung · data ' + new Date().toLocaleTimeString('id-ID'));
+    processData(data);
+    if (data.lastSeen) setText('srv-last-seen', new Date(data.lastSeen).toLocaleTimeString('id-ID'));
+    startPollCountdown(); // reset countdown
+  } catch(e) {
+    setApiStatus('error', 'Gagal poll: ' + e.message);
+  }
+}
+
+// =============================================================
+// FETCH HISTORICAL DATA (dari Supabase via Vercel)
+// =============================================================
+async function fetchHistoricalData() {
+  if (!apiUrl) {
+    renderHistoricalSim();
+    return;
+  }
+  document.getElementById('hist-loading').style.display = 'block';
+  document.getElementById('hist-refresh-btn').textContent = '⏳...';
+  try {
+    const res = await fetch(apiUrl + '/api/history?days=7', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    historicalData = rows;
+    renderHistoricalChart(rows);
+  } catch(e) {
+    console.warn('Historical fetch failed:', e.message);
+    renderHistoricalSim();
+  } finally {
+    document.getElementById('hist-loading').style.display = 'none';
+    document.getElementById('hist-refresh-btn').textContent = '↻ Refresh';
+  }
+}
+
+async function fetchAlarmHistory() {
+  if (!apiUrl) { renderAlarmHistorySim(); return; }
+  const tbody = document.getElementById('alarm-history-body');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">⏳ Mengambil data...</td></tr>';
+  try {
+    const res = await fetch(apiUrl + '/api/alarms?days=7', { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    renderAlarmHistory(rows);
+  } catch(e) {
+    renderAlarmHistorySim();
+  }
+}
+
+function renderAlarmHistory(rows) {
+  const tbody = document.getElementById('alarm-history-body');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">Tidak ada alarm dalam 7 hari</td></tr>'; return; }
+  tbody.innerHTML = rows.slice(0, 100).map(r => {
+    const cls = r.tipe && r.tipe.includes('Over') ? 'log-row-danger' : 'log-row-warn';
+    const telegram = r.telegram_sent ? '<span style="color:var(--accent2)">✓ Terkirim</span>' : '<span style="color:var(--text3)">-</span>';
+    return `<tr class="${cls}">
+      <td>${new Date(r.created_at||r.ts).toLocaleString('id-ID')}</td>
+      <td>${r.tipe||'--'}</td><td>${r.phase||'--'}</td>
+      <td>${r.nilai!=null?Number(r.nilai).toFixed(1)+'V':'--'}</td>
+      <td>${r.threshold!=null?r.threshold+'V':'--'}</td>
+      <td>${telegram}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAlarmHistorySim() {
+  const tbody = document.getElementById('alarm-history-body');
+  const now = Date.now();
+  const sim = [
+    { ts: now - 86400000*2, tipe:'Over Voltage L-N', phase:'R', nilai:233.5, threshold:231, telegram_sent:true },
+    { ts: now - 86400000*4, tipe:'Under Voltage L-N', phase:'T', nilai:207.2, threshold:209, telegram_sent:true },
+    { ts: now - 86400000*6, tipe:'Over Voltage L-L', phase:'RS', nilai:403.1, threshold:400, telegram_sent:true },
+  ];
+  renderAlarmHistory(sim.map(r => ({...r, created_at: new Date(r.ts).toISOString()})));
+}
+
+// =============================================================
+// HISTORICAL CHART RENDER
+// =============================================================
+function renderHistoricalChart(rows) {
+  if (!rows.length) { renderHistoricalSim(); return; }
+  const labels = rows.map(r => {
+    const d = new Date(r.created_at || r.ts);
+    return d.toLocaleDateString('id-ID', {month:'short',day:'numeric'}) + ' ' + d.toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'});
+  });
+  // Downsample ke ~500 points max
+  const step = Math.max(1, Math.floor(rows.length / 500));
+  const sampled = rows.filter((_,i) => i % step === 0);
+  const lblSampled = labels.filter((_,i) => i % step === 0);
+
+  const datasets = getHistDatasets(sampled, histMode);
+  if (cHistoris) cHistoris.destroy();
+  cHistoris = new Chart(document.getElementById('chartHistoris'), {
+    type:'line',
+    data: { labels: lblSampled, datasets },
+    options: chartHistOptions('Historis ' + histMode.toUpperCase() + ' — 7 Hari')
+  });
+
+  // L-L chart
+  const dsLL = [
+    { label:'V-RS', data: sampled.map(r=>r.voltRS||r.volt_rs), borderColor:'#f85149', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+    { label:'V-ST', data: sampled.map(r=>r.voltST||r.volt_st), borderColor:'#3fb950', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+    { label:'V-TR', data: sampled.map(r=>r.voltTR||r.volt_tr), borderColor:'#58a6ff', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+  ];
+  if (cHistLL) cHistLL.destroy();
+  cHistLL = new Chart(document.getElementById('chartHistLL'), { type:'line', data:{ labels:lblSampled, datasets:dsLL }, options:chartHistOptions('V L-L') });
+
+  // Stats
+  const vRArr = sampled.map(r=>r.voltR||r.volt_r).filter(Boolean);
+  const vSArr = sampled.map(r=>r.voltS||r.volt_s).filter(Boolean);
+  if (vRArr.length) {
+    setText('hist-max-vr', Math.max(...vRArr).toFixed(1)+'V');
+    setText('hist-min-vr', Math.min(...vRArr).toFixed(1)+'V');
+    setText('hist-avg-vr', (vRArr.reduce((a,b)=>a+b,0)/vRArr.length).toFixed(1)+'V');
+  }
+  if (vSArr.length) {
+    setText('hist-max-vs', Math.max(...vSArr).toFixed(1)+'V');
+    setText('hist-min-vs', Math.min(...vSArr).toFixed(1)+'V');
+    setText('hist-avg-vs', (vSArr.reduce((a,b)=>a+b,0)/vSArr.length).toFixed(1)+'V');
+  }
+  setText('hist-count', rows.length.toLocaleString() + ' records');
+}
+
+function getHistDatasets(sampled, mode) {
+  const map = {
+    vln: [
+      { label:'V-R', data:sampled.map(r=>r.voltR||r.volt_r), borderColor:'#f85149', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+      { label:'V-S', data:sampled.map(r=>r.voltS||r.volt_s), borderColor:'#3fb950', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+      { label:'V-T', data:sampled.map(r=>r.voltT||r.volt_t), borderColor:'#58a6ff', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+    ],
+    vll: [
+      { label:'V-RS', data:sampled.map(r=>r.voltRS||r.volt_rs), borderColor:'#f85149', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+      { label:'V-ST', data:sampled.map(r=>r.voltST||r.volt_st), borderColor:'#3fb950', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+      { label:'V-TR', data:sampled.map(r=>r.voltTR||r.volt_tr), borderColor:'#58a6ff', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+    ],
+    amp: [
+      { label:'I-R', data:sampled.map(r=>r.ampR||r.amp_r), borderColor:'#f85149', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+      { label:'I-S', data:sampled.map(r=>r.ampS||r.amp_s), borderColor:'#3fb950', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+      { label:'I-T', data:sampled.map(r=>r.ampT||r.amp_t), borderColor:'#58a6ff', fill:false, pointRadius:0, tension:0.3, borderWidth:1.5 },
+    ],
+    pwr: [
+      { label:'P-3P', data:sampled.map(r=>r.power3P||r.power_3p), borderColor:'#bc8cff', fill:true, backgroundColor:'rgba(188,140,255,0.06)', pointRadius:0, tension:0.3, borderWidth:2 },
+    ],
+    kwh: [
+      { label:'kWh', data:sampled.map(r=>r.kwh), borderColor:'#3fb950', fill:true, backgroundColor:'rgba(63,185,80,0.07)', pointRadius:0, tension:0.3, borderWidth:2 },
+    ],
+  };
+  return map[mode] || map.vln;
+}
+
+function chartHistOptions(title) {
+  return {
+    responsive:true, maintainAspectRatio:false, animation:{duration:400},
+    plugins:{
+      legend:{labels:{color:'#8b949e',font:{family:'Rajdhani',size:11},boxWidth:10}},
+      title:{display:false}
+    },
+    scales:{
+      x:{ticks:{color:'#6e7681',font:{size:8},maxTicksLimit:12,maxRotation:0},grid:{color:'rgba(48,54,61,0.6)'}},
+      y:{ticks:{color:'#6e7681',font:{size:9}},grid:{color:'rgba(48,54,61,0.6)'}}
+    }
+  };
+}
+
+function setHistMode(mode, el) {
+  histMode = mode;
+  document.querySelectorAll('[id^=hbtn-]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (historicalData.length) renderHistoricalChart(historicalData);
+  else fetchHistoricalData();
+}
+
+function renderHistoricalSim() {
+  // Buat data simulasi 7 hari
+  const now = Date.now();
+  const step = 10000; // 10 detik
+  const total = Math.floor((7 * 86400 * 1000) / step);
+  const rows = [];
+  for (let i = total; i >= 0; i--) {
+    const t = (now - i * step) / 1000;
+    const vR = 219 + Math.sin(t * 0.001) * 4 + (Math.random()-0.5)*2;
+    const vS = 221 + Math.sin(t * 0.0009 + 0.5) * 3 + (Math.random()-0.5)*2;
+    const vT = 220 + Math.sin(t * 0.0011 + 1) * 3.5 + (Math.random()-0.5)*2;
+    rows.push({
+      created_at: new Date(now - i * step).toISOString(),
+      volt_r: vR, volt_s: vS, volt_t: vT,
+      volt_rs: vR*Math.sqrt(3), volt_st: vS*Math.sqrt(3), volt_tr: vT*Math.sqrt(3),
+      amp_r: 45 + Math.sin(t*0.0005)*10, amp_s: 47 + Math.sin(t*0.0004)*8, amp_t: 44 + Math.sin(t*0.0006)*9,
+      power_3p: (vR+vS+vT)/3 * 45/1000,
+      kwh: 12000 + (total - i) * 0.01,
+    });
+  }
+  historicalData = rows;
+  renderHistoricalChart(rows);
+  setText('hist-count', rows.length.toLocaleString() + ' records (simulasi)');
+}
+
+// =============================================================
+// TEST ALERT (kirim ke Vercel → Telegram)
+// =============================================================
+async function sendTestAlert(type) {
+  const btnOv = document.getElementById('btn-test-ov');
+  const btnUv = document.getElementById('btn-test-uv');
+  const btnOvBar = document.getElementById('btn-test-ov-bar');
+  const btnUvBar = document.getElementById('btn-test-uv-bar');
+  const resultEl = document.getElementById('test-result');
+  [btnOv, btnUv, btnOvBar, btnUvBar].forEach(b => { if(b) b.disabled = true; });
+
+  const label = type === 'over' ? 'Over Voltage' : 'Under Voltage';
+  const phase = 'R';
+  const value = type === 'over' ? 232.5 : 207.8;
+  const threshold = type === 'over' ? 231 : 209;
+
+  if (!apiUrl) {
+    showTestResult(true, '[TEST] ' + label + ' alert simulasi — API URL belum diset');
+    [btnOv, btnUv, btnOvBar, btnUvBar].forEach(b => { if(b) b.disabled = false; });
+    return;
+  }
+
+  try {
+    const res = await fetch(apiUrl + '/api/test-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, phase, value, threshold }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    showTestResult(true, '[TEST] ' + label + ' terkirim ke Telegram ✓');
+  } catch(e) {
+    showTestResult(false, 'Gagal: ' + e.message);
+  } finally {
+    setTimeout(() => {
+      [btnOv, btnUv, btnOvBar, btnUvBar].forEach(b => { if(b) b.disabled = false; });
+    }, 3000);
+  }
+}
+
+function showTestResult(ok, msg) {
+  const el = document.getElementById('test-result');
+  if (!el) return;
+  el.className = 'test-result ' + (ok ? 'ok' : 'err');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+// =============================================================
+// SIMULATION TOGGLE
+// =============================================================
+function toggleSim(on) {
+  simMode = on;
+  if (on) {
+    stopPolling();
+    setApiStatus('sim', 'Mode simulasi aktif');
+    if (!simInterval) simInterval = setInterval(() => { processData(genSimData()); espUptime++; updateClock(); }, 1000);
+  } else {
+    if (simInterval) { clearInterval(simInterval); simInterval = null; }
+    if (apiUrl) startPolling();
+  }
+}
+
+// =============================================================
+// SIMULATION DATA GENERATOR
+// =============================================================
+function genSimData() {
+  const t = Date.now()/1000;
+  const n = () => (Math.random()-0.5)*2;
+  const d = t*0.1;
+  const vR=219+Math.sin(d)*3+n(), vS=221+Math.sin(d+0.5)*2.5+n(), vT=220+Math.sin(d+1)*2.8+n();
+  const vRS=vR*Math.sqrt(3)+n()*2, vST=vS*Math.sqrt(3)+n()*2, vTR=vT*Math.sqrt(3)+n()*2;
+  const iR=45+Math.sin(t*0.3)*8+n(), iS=47+Math.sin(t*0.25)*7+n(), iT=44+Math.sin(t*0.35)*9+n();
+  const i3P=(iR+iS+iT)/3+n();
+  const pR=vR*iR/1000, pS=vS*iS/1000, pT=vT*iT/1000, p3P=pR+pS+pT;
+  const kwh=12450+t*0.003;
+  const thdVR=8.5+Math.sin(t*0.2)*1.5+n()*0.3, thdVS=5.2+Math.sin(t*0.15)*0.8+n()*0.3, thdVT=4.8+Math.sin(t*0.18)*0.7+n()*0.3;
+  const thdVRS=3.1+n()*0.3, thdVST=3.3+n()*0.3, thdVTR=2.9+n()*0.3;
+  const thdIR=6.2+Math.sin(t*0.1)*1+n()*0.2, thdIS=5.8+n()*0.2, thdIT=5.5+n()*0.2;
+  const thdIR3p=6.0+n()*0.3, thdIS3p=5.7+n()*0.3, thdIT3p=5.4+n()*0.3;
+  return {
+    voltR:vR,voltS:vS,voltT:vT,voltRS:vRS,voltST:vST,voltTR:vTR,
+    ampR:iR,ampS:iS,ampT:iT,amp3P:i3P,
+    powerR:pR,powerS:pS,powerT:pT,power3P:p3P,
+    kwh,
+    thdVoltR:thdVR,thdVoltS:thdVS,thdVoltT:thdVT,
+    thdVoltRS:thdVRS,thdVoltST:thdVST,thdVoltTR:thdVTR,
+    thdAmpR:thdIR,thdAmpS:thdIS,thdAmpT:thdIT,
+    thdAmpR_3p:thdIR3p,thdAmpS_3p:thdIS3p,thdAmpT_3p:thdIT3p,
+    ovThdValR:8.5,ovThdValS:8.5,ovThdValT:8.5,
+    ovThdPickup:242.0,ovThdPickupDelay:0.1,ovThdDropout:230.0,ovThdDropoutDelay:0.05,
+    phaseLossValR:10.0,phaseLossValS:10.0,phaseLossValT:10.0,
+    phaseLossPickup:50.0,phaseLossPickupDelay:0.2,phaseLossDropout:40.0,phaseLossDropoutDelay:0.1,
+    ovVoltLLValRS:400.0,ovVoltLLValST:400.0,ovVoltLLValTR:400.0,
+    ovVoltLLPickup:400.0,ovVoltLLPickupDelay:0.1,ovVoltLLDropout:390.0,ovVoltLLDropoutDelay:0.05,
+    uvVoltLLValRS:360.0,uvVoltLLValST:360.0,uvVoltLLValTR:360.0,
+    uvVoltLLPickup:360.0,uvVoltLLPickupDelay:0.1,uvVoltLLDropout:370.0,uvVoltLLDropoutDelay:0.05,
+    ovVoltLNValR:231.0,ovVoltLNValS:231.0,ovVoltLNValT:231.0,
+    ovVoltLNPickup:231.0,ovVoltLNPickupDelay:0.1,ovVoltLNDropout:225.0,ovVoltLNDropoutDelay:0.05,
+    uvVoltLNValR:209.0,uvVoltLNValS:209.0,uvVoltLNValT:209.0,
+    uvVoltLNPickup:209.0,uvVoltLNPickupDelay:0.1,uvVoltLNDropout:215.0,uvVoltLNDropoutDelay:0.05,
+    uptime:espUptime,heap:185+Math.round(Math.sin(espUptime*0.1)*10),
+    rssi:-55+Math.round(Math.sin(espUptime*0.2)*5),
+    temp:45+Math.sin(espUptime*0.05)*3,ip:'-- (simulasi)',
+  };
+}
+
+// =============================================================
+// PROCESS DATA
+// =============================================================
+function processData(d) {
+  latestData = d;
+  updateMetricCards(d);
+  updateTHDBars(d);
+  updateKwhGauge(d.kwh||0);
+  updateFaultCards(d);
+  pushTrendBuffer(d);
+  pushFaultBuffer(d);
+  updateAllCharts();
+  updateFaultConfig(d);
+  updateESPInfo(d);
+  pushLogRow(d);
+  updateClock();
+}
+
+// =============================================================
+// METRIC CARDS UPDATE
+// =============================================================
+function f(v,dec=1){return isNaN(v)||v==null?'--':Number(v).toFixed(dec);}
+function ff(v){return f(v,2);}
+
+function setVCard(idVal,idCard,idBadge,val,over,under) {
+  const el=document.getElementById(idVal);
+  if(el) el.innerHTML=f(val)+'<span class="mc-unit">V</span>';
+  const card=document.getElementById(idCard), badge=document.getElementById(idBadge);
+  if(!card||!badge) return;
+  if(val>over){ card.className='metric-card danger'; badge.className='badge badge-danger'; badge.textContent='OVER'; }
+  else if(val<under){ card.className='metric-card warn'; badge.className='badge badge-warn'; badge.textContent='UNDER'; }
+  else { card.className='metric-card'; badge.className='badge badge-ok'; badge.textContent='NORMAL'; }
+}
+
+function updateMetricCards(d) {
+  setVCard('val-vr','card-vr','badge-vr',d.voltR,VOLT_OVER,VOLT_DROP);
+  setVCard('val-vs','card-vs','badge-vs',d.voltS,VOLT_OVER,VOLT_DROP);
+  setVCard('val-vt','card-vt','badge-vt',d.voltT,VOLT_OVER,VOLT_DROP);
+  setVCard('val-vrs','card-vrs','badge-vrs',d.voltRS,VOLT_3P_OVER,VOLT_3P_DROP);
+  setVCard('val-vst','card-vst','badge-vst',d.voltST,VOLT_3P_OVER,VOLT_3P_DROP);
+  setVCard('val-vtr','card-vtr','badge-vtr',d.voltTR,VOLT_3P_OVER,VOLT_3P_DROP);
+  setICard('val-ir','bar-ir',d.ampR);
+  setICard('val-is','bar-is',d.ampS);
+  setICard('val-it','bar-it',d.ampT);
+  setText('val-i3p',ff(d.amp3P)+'<span class="mc-unit">A</span>');
+  setText('val-pr',ff(d.powerR)+'<span class="mc-unit">kW</span>');
+  setText('val-ps',ff(d.powerS)+'<span class="mc-unit">kW</span>');
+  setText('val-pt',ff(d.powerT)+'<span class="mc-unit">kW</span>');
+  setText('val-p3p',ff(d.power3P)+'<span class="mc-unit">kW</span>');
+  setText('kwh-pr',ff(d.powerR)+' kW');
+  setText('kwh-ps',ff(d.powerS)+' kW');
+  setText('kwh-pt',ff(d.powerT)+' kW');
+  setText('kwh-p3p',ff(d.power3P)+' kW');
+  setText('wv-freq',f(d.freq||50,2)+' Hz');
+  if(d.uptime!==undefined){ espUptime=d.uptime; updateUptimeDisplay(); }
+  if(d.heap!==undefined) setText('esp-heap',d.heap+' KB');
+  if(d.rssi!==undefined) setText('esp-rssi',d.rssi+' dBm');
+  if(d.temp!==undefined) setText('esp-temp',f(d.temp,1)+' °C');
+  if(d.ip!==undefined) setText('esp-ip',d.ip);
+}
+
+function setText(id,html){const e=document.getElementById(id);if(e)e.innerHTML=html;}
+function setICard(id,barId,val){
+  setText(id,ff(val)+'<span class="mc-unit">A</span>');
+  const pct=Math.min(100,Math.max(0,(val/100)*100));
+  const bar=document.getElementById(barId);
+  if(bar){bar.style.width=pct+'%';bar.style.background=pct>90?'#f85149':pct>70?'#d29922':'var(--accent2)';}
+}
+function updateUptimeDisplay(){
+  const h=Math.floor(espUptime/3600),m=Math.floor((espUptime%3600)/60),s=espUptime%60;
+  setText('esp-uptime',`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+}
+
+// =============================================================
+// THD BARS
+// =============================================================
+function setTHDBar(barId,valId,val,color,limit=15){
+  const pct=Math.min(100,Math.max(0,(val/limit)*100));
+  const bar=document.getElementById(barId),lbl=document.getElementById(valId);
+  if(bar){bar.style.width=pct+'%';bar.style.background=val>8?'#f85149':val>5?'#d29922':color;}
+  if(lbl) lbl.textContent=f(val,1)+'%';
+}
+function updateTHDBars(d) {
+  const vColors={'r':'#f85149','s':'var(--accent2)','t':'var(--accent)'};
+  const iColors={'r':'#ff8c69','s':'#6ee36e','t':'#87ceeb'};
+  const phLabels={'r':'R','s':'S','t':'T'};
+  const ph=thd1PhSel;
+  const vKey='thdVolt'+ph.toUpperCase(), iKey='thdAmp'+ph.toUpperCase();
+  const vVal=d[vKey]||0, iVal=d[iKey]||0;
+  setTHDBar('tbar1-v','tval1-v',vVal,vColors[ph]);
+  setTHDBar('tbar1-i','tval1-i',iVal,iColors[ph]);
+  const vLbl=document.getElementById('thd1-vlabel'), iLbl=document.getElementById('thd1-ilabel');
+  if(vLbl){vLbl.textContent=`V-${phLabels[ph]} (LN)`;vLbl.style.color=vColors[ph];}
+  if(iLbl){iLbl.textContent=`I-${phLabels[ph]}`;iLbl.style.color=iColors[ph];}
+  const phaseLabel=document.getElementById('thd1-phase-label');
+  if(phaseLabel) phaseLabel.textContent=`Phase ${phLabels[ph]}`;
+  const b1v=document.getElementById('tbar1-v');if(b1v)b1v.style.background=vColors[ph];
+  const b1i=document.getElementById('tbar1-i');if(b1i)b1i.style.background=iColors[ph];
+  const v1lbl=document.getElementById('tval1-v');if(v1lbl)v1lbl.style.color=vColors[ph];
+  const i1lbl=document.getElementById('tval1-i');if(i1lbl)i1lbl.style.color=iColors[ph];
+  const ok1=vVal<=8&&iVal<=8;
+  setText('thd1-status',`<strong style="color:${ok1?'var(--accent2)':'var(--danger)'}">${ok1?'COMPLIANT':'VIOLATION'}</strong>`);
+  setTHDBar('tbar3-vr','tval3-vr',d.thdVoltR||0,'#f85149');
+  setTHDBar('tbar3-vs','tval3-vs',d.thdVoltS||0,'var(--accent2)');
+  setTHDBar('tbar3-vt','tval3-vt',d.thdVoltT||0,'var(--accent)');
+  setTHDBar('tbar3-ir','tval3-ir',d.thdAmpR||0,'#ff8c69');
+  setTHDBar('tbar3-is','tval3-is',d.thdAmpS||0,'#6ee36e');
+  setTHDBar('tbar3-it','tval3-it',d.thdAmpT||0,'#87ceeb');
+  const ok3=(d.thdVoltR||0)<=8&&(d.thdVoltS||0)<=8&&(d.thdVoltT||0)<=8;
+  setText('thd3-status',`<strong style="color:${ok3?'var(--accent2)':'var(--danger)'}">${ok3?'COMPLIANT':'VIOLATION'}</strong>`);
+}
+function setTHD1Phase(ph, el) {
+  thd1PhSel=ph;
+  document.querySelectorAll('[id^=thd1ph-]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(latestData && Object.keys(latestData).length) updateTHDBars(latestData);
+}
+
+// =============================================================
+// KWh GAUGE
+// =============================================================
+let kwhMax=20000;
+function updateKwhGauge(kwh) {
+  if(kwh>kwhMax) kwhMax=kwh*1.2;
+  const pct=Math.min(1,kwh/kwhMax);
+  const arcLen=251, offset=arcLen*(1-pct);
+  const arc=document.getElementById('gauge-arc');
+  if(arc) arc.setAttribute('stroke-dashoffset',offset.toFixed(1));
+  const angle=-90+pct*180;
+  const needle=document.getElementById('gauge-needle');
+  if(needle) needle.setAttribute('transform',`rotate(${angle.toFixed(1)},100,100)`);
+  setText('kwh-val',Math.round(kwh).toLocaleString()+' kWh');
+}
+
+// =============================================================
+// FAULT CARDS
+// =============================================================
+function setFaultLED(ledId,txtId,active,critical,activeLabel,okLabel){
+  const led=document.getElementById(ledId),txt=document.getElementById(txtId);
+  if(!led||!txt) return;
+  if(active){ led.className='fault-led '+(critical?'led-danger':'led-warn'); txt.textContent=activeLabel; txt.style.color=critical?'var(--danger)':'var(--warn)'; }
+  else { led.className='fault-led led-ok'; txt.textContent=okLabel; txt.style.color='var(--accent2)'; }
+}
+function updateFaultCards(d) {
+  const ovMax=Math.max(d.voltR||0,d.voltS||0,d.voltT||0);
+  const uvMin=Math.min(d.voltR||999,d.voltS||999,d.voltT||999);
+  const ovLLMax=Math.max(d.voltRS||0,d.voltST||0,d.voltTR||0);
+  const uvLLMin=Math.min(d.voltRS||999,d.voltST||999,d.voltTR||999);
+  const isTHD=(d.thdVoltR||0)>8||(d.thdVoltS||0)>8||(d.thdVoltT||0)>8;
+  setFaultLED('led-ovln','txt-ovln',ovMax>VOLT_OVER,true,'FAULT','NORMAL');
+  setFaultLED('led-uvln','txt-uvln',uvMin<VOLT_DROP,false,'ALARM','NORMAL');
+  setFaultLED('led-ovll','txt-ovll',ovLLMax>VOLT_3P_OVER,true,'FAULT','NORMAL');
+  setFaultLED('led-uvll','txt-uvll',uvLLMin<VOLT_3P_DROP,false,'ALARM','NORMAL');
+  setFaultLED('led-thd','txt-thd',isTHD,false,'WARNING','NORMAL');
+  setFaultLED('led-pl','txt-pl',false,true,'FAULT','NORMAL');
+  setText('fc-ovln-val','Vmax: '+f(ovMax)+'V');
+  setText('fc-uvln-val','Vmin: '+f(uvMin==='999'?0:uvMin)+'V');
+  setText('fc-ovll-val','Vmax: '+f(ovLLMax)+'V');
+  setText('fc-uvll-val','Vmin: '+f(uvLLMin==='999'?0:uvLLMin)+'V');
+  setText('fc-thd-val','THD max: '+f(Math.max(d.thdVoltR||0,d.thdVoltS||0,d.thdVoltT||0),1)+'%');
+  setText('fc-pl-val','Phase: R✓ S✓ T✓');
+}
+
+// =============================================================
+// FAULT CONFIG UPDATE
+// =============================================================
+function updateFaultConfig(d) {
+  if(d.ovVoltLNPickup) { setText('fi-ovvln',d.ovVoltLNPickup+'V'); staticConfig.ovVoltLNPickup=d.ovVoltLNPickup; }
+  if(d.uvVoltLNPickup) { setText('fi-uvvln',d.uvVoltLNPickup+'V'); staticConfig.uvVoltLNPickup=d.uvVoltLNPickup; }
+  if(d.ovVoltLLPickup) { setText('fi-ovvll',d.ovVoltLLPickup+'V'); staticConfig.ovVoltLLPickup=d.ovVoltLLPickup; }
+  if(d.uvVoltLLPickup) { setText('fi-uvvll',d.uvVoltLLPickup+'V'); staticConfig.uvVoltLLPickup=d.uvVoltLLPickup; }
+  if(d.ovThdValR)      { setText('fi-ovthd',d.ovThdValR+'%'); }
+  if(d.phaseLossPickup){ setText('fi-ploss',d.phaseLossPickup+'%'); }
+  if(d.ovVoltLNDropout){ setText('fi-ovvln-do',d.ovVoltLNDropout+'V'); }
+  if(d.uvVoltLNDropout){ setText('fi-uvvln-do',d.uvVoltLNDropout+'V'); }
+}
+
+// =============================================================
+// ESP INFO UPDATE
+// =============================================================
+function updateESPInfo(d) {
+  // server status (saat live)
+  if (!simMode) {
+    setText('srv-vercel','<span style="color:var(--accent2)">✓ Online</span>');
+    setText('srv-supabase','<span style="color:var(--accent2)">✓ Connected</span>');
+    setText('srv-telegram','<span style="color:var(--accent2)">✓ Active</span>');
+  } else {
+    setText('srv-vercel','<span style="color:var(--text3)">-- (sim)</span>');
+    setText('srv-supabase','<span style="color:var(--text3)">-- (sim)</span>');
+    setText('srv-telegram','<span style="color:var(--text3)">-- (sim)</span>');
+  }
+}
+
+// =============================================================
+// TREND BUFFERS
+// =============================================================
+function pushTrendBuffer(d) {
+  const now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const push=(arr,val)=>{ arr.push(val); if(arr.length>MAX_POINTS) arr.shift(); };
+  push(buf.vR,d.voltR); push(buf.vS,d.voltS); push(buf.vT,d.voltT);
+  push(buf.vRS,d.voltRS); push(buf.vST,d.voltST); push(buf.vTR,d.voltTR);
+  push(buf.iR,d.ampR); push(buf.iS,d.ampS); push(buf.iT,d.ampT); push(buf.i3P,d.amp3P);
+  push(buf.pR,d.powerR); push(buf.pS,d.powerS); push(buf.pT,d.powerT); push(buf.p3P,d.power3P);
+  push(buf.labels,now);
+}
+function pushFaultBuffer(d) {
+  const now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const push=(arr,val)=>{ arr.push(val); if(arr.length>MAX_POINTS) arr.shift(); };
+  push(fbuf.vR,d.voltR); push(fbuf.vS,d.voltS); push(fbuf.vT,d.voltT);
+  push(fbuf.vRS,d.voltRS); push(fbuf.vST,d.voltST); push(fbuf.vTR,d.voltTR);
+  push(fbuf.thdR,d.thdVoltR); push(fbuf.thdS,d.thdVoltS); push(fbuf.thdT,d.thdVoltT);
+  push(fbuf.labels,now);
+}
+
+// =============================================================
+// REALTIME CHARTS
+// =============================================================
+function chartOpts(yLabel='') {
+  return {
+    responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    plugins:{legend:{labels:{color:'#8b949e',font:{family:'Rajdhani',size:11},boxWidth:10}}},
+    scales:{
+      x:{ticks:{color:'#6e7681',font:{size:8},maxTicksLimit:8,maxRotation:0},grid:{color:'rgba(48,54,61,0.6)'}},
+      y:{ticks:{color:'#6e7681',font:{size:9}},grid:{color:'rgba(48,54,61,0.6)'},title:{display:!!yLabel,text:yLabel,color:'#6e7681',font:{size:9}}}
+    }
+  };
+}
+
+function initRealTimeCharts() {
+  c1Phase = new Chart(document.getElementById('chart1Phase'), { type:'line', data:{labels:[],datasets:[{label:'V-R',data:[],borderColor:'#f85149',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5}]}, options:chartOpts('V') });
+  c3Phase = new Chart(document.getElementById('chart3Phase'), { type:'line', data:{labels:[],datasets:[]}, options:chartOpts() });
+  cFaultOV = new Chart(document.getElementById('chartFaultUV'), { type:'line', data:{labels:[],datasets:[]}, options:chartOpts('V') });
+  cFaultPL = new Chart(document.getElementById('chartFaultPL'), { type:'line', data:{labels:[],datasets:[
+    {label:'V-R',data:[],borderColor:'#f85149',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5},
+    {label:'V-S',data:[],borderColor:'#3fb950',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5},
+    {label:'V-T',data:[],borderColor:'#58a6ff',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5},
+  ]}, options:chartOpts('V') });
+  // Init historical empty
+  cHistoris = new Chart(document.getElementById('chartHistoris'), { type:'line', data:{labels:[],datasets:[]}, options:chartHistOptions('Historis') });
+  cHistLL   = new Chart(document.getElementById('chartHistLL'),   { type:'line', data:{labels:[],datasets:[]}, options:chartHistOptions('V L-L') });
+}
+
+function updateAllCharts() {
+  // chart1Phase
+  let ds1=[];
+  if(chart1Mode==='v') ds1=[{label:'V-'+chart1PhSel.toUpperCase(),data:[...buf['v'+chart1PhSel.toUpperCase()]],borderColor:['R'=>'#f85149','S'=>'#3fb950','T'=>'#58a6ff'][chart1PhSel.toUpperCase()]||'#f85149',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5}];
+  else if(chart1Mode==='i') ds1=[{label:'I-'+chart1PhSel.toUpperCase(),data:[...buf['i'+chart1PhSel.toUpperCase()]],borderColor:'#3fb950',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5}];
+  else ds1=[{label:'P-'+chart1PhSel.toUpperCase(),data:[...buf['p'+chart1PhSel.toUpperCase()]],borderColor:'#bc8cff',fill:true,backgroundColor:'rgba(188,140,255,0.06)',pointRadius:0,tension:0.3,borderWidth:1.5}];
+  c1Phase.data.labels=[...buf.labels]; c1Phase.data.datasets=ds1; c1Phase.update('none');
+
+  // chart3Phase
+  let ds3=[];
+  if(chart3Mode==='vll') ds3=[
+    {label:'V-RS',data:[...buf.vRS],borderColor:'#f85149',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5},
+    {label:'V-ST',data:[...buf.vST],borderColor:'#3fb950',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5},
+    {label:'V-TR',data:[...buf.vTR],borderColor:'#58a6ff',fill:false,pointRadius:0,tension:0.3,borderWidth:1.5},
+  ];
+  else if(chart3Mode==='i') ds3=[{label:'I-3P',data:[...buf.i3P],borderColor:'#3fb950',fill:true,backgroundColor:'rgba(63,185,80,0.07)',pointRadius:0,tension:0.3,borderWidth:1.5}];
+  else ds3=[{label:'P-3P',data:[...buf.p3P],borderColor:'#bc8cff',fill:true,backgroundColor:'rgba(188,140,255,0.06)',pointRadius:0,tension:0.3,borderWidth:2}];
+  c3Phase.data.labels=[...buf.labels]; c3Phase.data.datasets=ds3; c3Phase.update('none');
+
+  // fault UV chart
+  let dsUV=[];
+  const line=(lbl,data,color)=>({label:lbl,data:[...data],borderColor:color,fill:false,pointRadius:0,tension:0.3,borderWidth:1.5});
+  if(faultUVMode==='ovll') dsUV=[line('V-RS',fbuf.vRS,'#f85149'),line('V-ST',fbuf.vST,'#3fb950'),line('V-TR',fbuf.vTR,'#58a6ff')];
+  else if(faultUVMode==='uvll') dsUV=[line('V-RS',fbuf.vRS,'#d29922'),line('V-ST',fbuf.vST,'#e3b341'),line('V-TR',fbuf.vTR,'#ffd700')];
+  else if(faultUVMode==='ovln') dsUV=[line('V-R',fbuf.vR,'#f85149'),line('V-S',fbuf.vS,'#3fb950'),line('V-T',fbuf.vT,'#58a6ff')];
+  else dsUV=[line('V-R',fbuf.vR,'#d29922'),line('V-S',fbuf.vS,'#e3b341'),line('V-T',fbuf.vT,'#ffd700')];
+  cFaultOV.data.labels=[...fbuf.labels]; cFaultOV.data.datasets=dsUV; cFaultOV.update('none');
+
+  // fault PL chart
+  cFaultPL.data.labels=[...fbuf.labels];
+  cFaultPL.data.datasets[0].data=[...fbuf.vR];
+  cFaultPL.data.datasets[1].data=[...fbuf.vS];
+  cFaultPL.data.datasets[2].data=[...fbuf.vT];
+  cFaultPL.update('none');
+}
+
+function setChart1Mode(mode,el){chart1Mode=mode;document.querySelectorAll('[id^=c1btn-]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function setChart1Phase(ph,el){chart1PhSel=ph;document.querySelectorAll('[id^=c1ph-]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function setChart3Mode(mode,el){chart3Mode=mode;document.querySelectorAll('[id^=c3btn-]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function setFaultUVMode(mode,el){faultUVMode=mode;document.querySelectorAll('[id^=fuv-btn-]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+
+// =============================================================
+// WAVEFORM
+// =============================================================
+function drawWave(canvasId,phase,modeRef,frameRef){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return null;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.clientWidth,H=canvas.clientHeight||180;
+  canvas.width=W; canvas.height=H;
+  const mode=typeof modeRef==='function'?modeRef():modeRef;
+  ctx.clearRect(0,0,W,H);
+  const midY=H/2, amp=H*0.36;
+  const drawSine=(pOff,color,ampMult=1)=>{
+    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.globalAlpha=0.85;
+    for(let x=0;x<W;x++){const y=midY-Math.sin((x/W)*4*Math.PI+phase+pOff)*amp*ampMult;x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+    ctx.stroke(); ctx.globalAlpha=1;
+  };
+  const phSel=typeof wave1PhSel==='string'?wave1PhSel:'r';
+  const pOff={'r':0,'s':2*Math.PI/3,'t':4*Math.PI/3};
+  if(canvasId==='wave1Canvas'){
+    const off=pOff[phSel]||0;
+    if(mode==='v'||mode==='vi') drawSine(off,'#58a6ff');
+    if(mode==='i'||mode==='vi') drawSine(off,'#3fb950',0.7);
+  } else {
+    if(mode==='v'||mode==='vi'){ drawSine(0,'#f85149'); drawSine(2*Math.PI/3,'#3fb950'); drawSine(4*Math.PI/3,'#58a6ff'); }
+    if(mode==='i'||mode==='vi'){ drawSine(0,'#ff8c69',0.7); drawSine(2*Math.PI/3,'#6ee36e',0.7); drawSine(4*Math.PI/3,'#87ceeb',0.7); }
+  }
+  // Legend
+  const legend=canvasId==='wave1Canvas'
+    ? (mode==='v'?[['#58a6ff','Voltage']]:mode==='i'?[['#3fb950','Current']]:[ ['#58a6ff','Voltage'],['#3fb950','Current'] ])
+    : (mode==='v'?[['#f85149','R'],['#3fb950','S'],['#58a6ff','T']]:mode==='i'?[['#ff8c69','IR'],['#6ee36e','IS'],['#87ceeb','IT']]:[ ['#58a6ff','VR'],['#3fb950','VS'],['#f85149','VT'],['#ff8c69','IR'],['#6ee36e','IS'],['#87ceeb','IT'] ]);
+  ctx.font='11px Rajdhani'; let lx=10;
+  legend.forEach(([c,l])=>{ctx.fillStyle=c;ctx.fillRect(lx,6,12,3);lx+=14;ctx.fillStyle='#8b949e';ctx.fillText(l,lx,14);lx+=ctx.measureText(l).width+12;});
+  return requestAnimationFrame(()=>{
+    if(canvasId==='wave1Canvas'){wave1Phase+=0.04;drawWave(canvasId,wave1Phase,modeRef,frameRef);}
+    else{wave3Phase+=0.04;drawWave(canvasId,wave3Phase,modeRef,frameRef);}
+  });
+}
+function setWave1Mode(mode,el){wave1Mode=mode;document.querySelectorAll('[id^=w1btn-]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+function setWave1Phase(ph,el){
+  wave1PhSel=ph;
+  document.querySelectorAll('[id^=w1ph-]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const t=document.getElementById('wave1-title');
+  if(t) t.textContent=`Sinusoidal Phase ${ph.toUpperCase()}`;
+}
+function setWave3Mode(mode,el){wave3Mode=mode;document.querySelectorAll('[id^=w3btn-]').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+
+// =============================================================
+// EVENT LOG
+// =============================================================
+const MAX_LOG = 200;
+function rowClass(vR,vS,vT,vRS,vST,vTR){
+  if(vR>VOLT_OVER||vS>VOLT_OVER||vT>VOLT_OVER||vRS>VOLT_3P_OVER||vST>VOLT_3P_OVER||vTR>VOLT_3P_OVER) return 'log-row-danger';
+  if(vR<VOLT_DROP||vS<VOLT_DROP||vT<VOLT_DROP||vRS<VOLT_3P_DROP||vST<VOLT_3P_DROP||vTR<VOLT_3P_DROP) return 'log-row-warn';
+  return 'log-row-ok';
+}
+function pushLogRow(d) {
+  const ts=new Date().toLocaleString('id-ID');
+  logRows.unshift({ts,d:{...d}});
+  if(logRows.length>MAX_LOG) logRows.pop();
+  renderLog();
+}
+function renderLog(){
+  const tbody=document.getElementById('log-body');
+  if(!tbody) return;
+  const rows=logRows.slice(0,100).map(({ts,d})=>{
+    const cls=rowClass(d.voltR||0,d.voltS||0,d.voltT||0,d.voltRS||0,d.voltST||0,d.voltTR||0);
+    const c=v=>isNaN(v)||v==null?'--':Number(v).toFixed(2);
+    return `<tr class="${cls}">
+      <td>${ts}</td>
+      <td>${c(d.voltR)}</td><td>${c(d.voltS)}</td><td>${c(d.voltT)}</td>
+      <td>${c(d.ampR)}</td><td>${c(d.ampS)}</td><td>${c(d.ampT)}</td>
+      <td>${c(d.powerR)}</td><td>${c(d.powerS)}</td><td>${c(d.powerT)}</td>
+      <td>${c(d.voltRS)}</td><td>${c(d.voltST)}</td><td>${c(d.voltTR)}</td>
+      <td>${c(d.amp3P)}</td><td>${c(d.power3P)}</td><td>${c(d.kwh)}</td>
+      <td>${c(d.thdVoltR)}</td><td>${c(d.thdVoltS)}</td><td>${c(d.thdVoltT)}</td>
+      <td>${c(d.thdVoltRS)}</td><td>${c(d.thdVoltST)}</td><td>${c(d.thdVoltTR)}</td>
+      <td>${c(d.thdAmpR)}</td><td>${c(d.thdAmpS)}</td><td>${c(d.thdAmpT)}</td>
+      <td>${c(d.thdAmpR_3p)}</td><td>${c(d.thdAmpS_3p)}</td><td>${c(d.thdAmpT_3p)}</td>
+      <td>${c(d.ovThdValR)}</td><td>${c(d.ovThdValS)}</td><td>${c(d.ovThdValT)}</td>
+      <td>${c(d.phaseLossValR)}</td><td>${c(d.phaseLossValS)}</td><td>${c(d.phaseLossValT)}</td>
+      <td>${c(d.ovVoltLLValRS)}</td><td>${c(d.ovVoltLLValST)}</td><td>${c(d.ovVoltLLValTR)}</td><td>${c(d.ovVoltLLPickup)}</td><td>${c(d.ovVoltLLDropout)}</td>
+      <td>${c(d.uvVoltLLValRS)}</td><td>${c(d.uvVoltLLValST)}</td><td>${c(d.uvVoltLLValTR)}</td><td>${c(d.uvVoltLLPickup)}</td><td>${c(d.uvVoltLLDropout)}</td>
+      <td>${c(d.ovVoltLNValR)}</td><td>${c(d.ovVoltLNValS)}</td><td>${c(d.ovVoltLNValT)}</td><td>${c(d.ovVoltLNPickup)}</td><td>${c(d.ovVoltLNDropout)}</td>
+      <td>${c(d.uvVoltLNValR)}</td><td>${c(d.uvVoltLNValS)}</td><td>${c(d.uvVoltLNValT)}</td><td>${c(d.uvVoltLNPickup)}</td><td>${c(d.uvVoltLNDropout)}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML=rows||'<tr><td colspan="54" style="text-align:center;padding:16px;color:var(--text3)">Belum ada data</td></tr>';
+}
+
+// =============================================================
+// TABS
+// =============================================================
+function switchTab(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const tabs=['realtime','historis','faults','waveform','log','device'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)]?.classList.add('active');
+  if(name==='waveform'){
+    if(!wave1Frame) wave1Frame=drawWave('wave1Canvas',wave1Phase,()=>wave1Mode,null);
+    if(!wave3Frame) wave3Frame=drawWave('wave3Canvas',wave3Phase,()=>wave3Mode,null);
+  }
+  if(name==='log') renderLog();
+  if(name==='historis') {
+    if(!historicalData.length) fetchHistoricalData();
+  }
+}
+
+// =============================================================
+// CLOCK
+// =============================================================
+function updateClock(){
+  document.getElementById('clock').textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// =============================================================
+// MAIN
+// =============================================================
+function main(){
+  loadApiUrl();
+  initRealTimeCharts();
+  wave1Frame=drawWave('wave1Canvas',wave1Phase,()=>wave1Mode,null);
+  wave3Frame=drawWave('wave3Canvas',wave3Phase,()=>wave3Mode,null);
+  toggleSim(true);
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Auto-start jika API URL sudah tersimpan dan bukan localhost
+  if (apiUrl && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    setTimeout(() => { saveApiUrl(); }, 500);
+  }
+}
+
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',main);
+else setTimeout(main,100);
+</script>
+</body>
+</html>
