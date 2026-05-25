@@ -1,10 +1,15 @@
 {
   "version": 2,
-  "builds": [{ "src": "server.js", "use": "@vercel/node" }],
+  "builds": [
+    { "src": "server.js", "use": "@vercel/node" },
+    { "src": "public/index.html", "use": "@vercel/static" }
+  ],
   "routes": [
     { "src": "/api/(.*)", "dest": "server.js" },
     { "src": "/data", "dest": "server.js" },
     { "src": "/status", "dest": "server.js" },
-    { "src": "/(.*)", "dest": "server.js" }
+    { "src": "/api/telegram", "dest": "server.js" },
+    { "src": "/", "dest": "public/index.html" },
+    { "src": "/index.html", "dest": "public/index.html" }
   ]
 }
