@@ -1,6 +1,6 @@
 /**
  * ESP32 PowerLogic PM5350 — Vercel + Supabase Server
- *
+ * 
  * Arsitektur:
  *   ESP32  →  POST /data  →  server  →  Supabase (simpan)
  *   Browser polling /api/latest    ←  server (ambil data terakhir)
