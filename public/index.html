@@ -634,7 +634,7 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
       <div class="esp-item"><div class="k">CPU Freq</div><div class="v" style="color:var(--accent)">240 MHz</div></div>
       <div class="esp-item"><div class="k">Free Heap</div><div class="v" id="esp-heap" style="color:var(--accent2)">-- KB</div></div>
       <div class="esp-item"><div class="k">Uptime</div><div class="v" id="esp-uptime">--</div></div>
-      <div class="esp-item"><div class="k">WiFi RSSI</div><div class="v" id="esp-rssi" style="color:var(--accent)">-- dBm</div></div>
+      <div class="esp-item"><div class="k">Ethernet IP</div><div class="v" id="esp-rssi" style="color:var(--accent)">--</div></div>
       <div class="esp-item"><div class="k">IP Address</div><div class="v" id="esp-ip" style="font-size:11px">--</div></div>
       <div class="esp-item"><div class="k">Temperature</div><div class="v" id="esp-temp" style="color:var(--warn)">-- °C</div></div>
       <div class="esp-item"><div class="k">POST Interval</div><div class="v" style="color:var(--purple)">10 detik</div></div>
@@ -1205,7 +1205,7 @@ function updateMetricCards(d) {
   setText('wv-freq',f(d.freq||50,2)+' Hz');
   if(d.uptime!==undefined){ espUptime=d.uptime; updateUptimeDisplay(); }
   if(d.heap!==undefined) setText('esp-heap',d.heap+' KB');
-  if(d.rssi!==undefined) setText('esp-rssi',d.rssi+' dBm');
+  if(d.ip!==undefined) setText('esp-rssi', d.ip);
   if(d.temp!==undefined) setText('esp-temp',f(d.temp,1)+' °C');
   if(d.ip!==undefined) setText('esp-ip',d.ip);
 }
