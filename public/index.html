@@ -993,8 +993,9 @@ function chartHistOptions(title) {
       y:{ticks:{color:'#6e7681',font:{size:9}},grid:{color:'rgba(48,54,61,0.6)'}}
     },
     onClick:(evt, elements, chart) => {
-      if(!elements.length) return;
-      const i = elements[0].index;
+      const pts = chart.getElementsAtEventForMode(evt,'index',{intersect:false},true);
+      if(!pts.length) return;
+      const i = pts[0].index;
       const label = chart.data.labels[i];
       const values = chart.data.datasets.map(ds => ({
         name: ds.label,
@@ -1250,13 +1251,14 @@ function updateTHDBars(d) {
   const i1lbl=document.getElementById('tval1-i');if(i1lbl)i1lbl.style.color=iColors[ph];
   const ok1=vVal<=8&&iVal<=8;
   setText('thd1-status',`<strong style="color:${ok1?'var(--accent2)':'var(--danger)'}">${ok1?'COMPLIANT':'VIOLATION'}</strong>`);
-  setTHDBar('tbar3-vr','tval3-vr',d.thdVoltR||0,'#f85149');
-  setTHDBar('tbar3-vs','tval3-vs',d.thdVoltS||0,'var(--accent2)');
-  setTHDBar('tbar3-vt','tval3-vt',d.thdVoltT||0,'var(--accent)');
-  setTHDBar('tbar3-ir','tval3-ir',d.thdAmpR||0,'#ff8c69');
-  setTHDBar('tbar3-is','tval3-is',d.thdAmpS||0,'#6ee36e');
-  setTHDBar('tbar3-it','tval3-it',d.thdAmpT||0,'#87ceeb');
-  const ok3=(d.thdVoltR||0)<=8&&(d.thdVoltS||0)<=8&&(d.thdVoltT||0)<=8;
+  setTHDBar('tbar3-vrs','tval3-vrs',d.thdVoltRS||0,'#f85149');
+  setTHDBar('tbar3-vst','tval3-vst',d.thdVoltST||0,'var(--accent2)');
+  setTHDBar('tbar3-vtr','tval3-vtr',d.thdVoltTR||0,'var(--accent)');
+  setTHDBar('tbar3-ir','tval3-ir',d.thdAmpR_3p||0,'#ff8c69');
+  setTHDBar('tbar3-is','tval3-is',d.thdAmpS_3p||0,'#6ee36e');
+  setTHDBar('tbar3-it','tval3-it',d.thdAmpT_3p||0,'#87ceeb');
+  const ok3=(d.thdVoltRS||0)<=8&&(d.thdVoltST||0)<=8&&(d.thdVoltTR||0)<=8
+        &&(d.thdAmpR_3p||0)<=8&&(d.thdAmpS_3p||0)<=8&&(d.thdAmpT_3p||0)<=8;
   setText('thd3-status',`<strong style="color:${ok3?'var(--accent2)':'var(--danger)'}">${ok3?'COMPLIANT':'VIOLATION'}</strong>`);
 }
 function setTHD1Phase(ph, el) {
@@ -1398,8 +1400,9 @@ function chartOpts(yLabel='') {
       y:{ticks:{color:'#6e7681',font:{size:9}},grid:{color:'rgba(48,54,61,0.6)'},title:{display:!!yLabel,text:yLabel,color:'#6e7681',font:{size:9}}}
     },
     onClick:(evt, elements, chart) => {
-      if(!elements.length) return;
-      const i = elements[0].index;
+      const pts = chart.getElementsAtEventForMode(evt,'index',{intersect:false},true);
+      if(!pts.length) return;
+      const i = pts[0].index;
       const label = chart.data.labels[i];
       const values = chart.data.datasets.map(ds => ({
         name: ds.label,
