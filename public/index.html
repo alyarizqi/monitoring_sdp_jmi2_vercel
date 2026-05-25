@@ -178,6 +178,13 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 
 /* Sim mode badge */
 .sim-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(210,153,34,0.12);color:var(--warn);border:1px solid rgba(210,153,34,0.3);font-family:var(--font-title);font-weight:700;}
+
+/* Animasi */
+@keyframes slideIn {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+  
 </style>
 </head>
 <body>
@@ -374,20 +381,20 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
     </div>
   </div>
 
-  <!-- THD Bars: 3-Phase -->
-  <div class="section-label">THD 3-Phase</div>
-  <div class="thd-panel">
-    <div class="chart-title" style="margin-bottom:10px">Total Harmonic Distortion Analysis — 3 Phase</div>
-    <div class="thd-row"><span class="thd-label" style="color:var(--danger)">V-R (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vr" style="background:var(--danger)"></div></div><span class="thd-val" id="tval3-vr" style="color:var(--danger)">--%</span></div>
-    <div class="thd-row"><span class="thd-label" style="color:var(--accent2)">V-S (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vs" style="background:var(--accent2)"></div></div><span class="thd-val" id="tval3-vs" style="color:var(--accent2)">--%</span></div>
-    <div class="thd-row"><span class="thd-label" style="color:var(--accent)">V-T (LN)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vt" style="background:var(--accent)"></div></div><span class="thd-val" id="tval3-vt" style="color:var(--accent)">--%</span></div>
-    <div class="thd-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span class="thd-label" style="color:#ff8c69">I-R</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-ir" style="background:#ff8c69"></div></div><span class="thd-val" id="tval3-ir" style="color:#ff8c69">--%</span></div>
-    <div class="thd-row"><span class="thd-label" style="color:#6ee36e">I-S</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-is" style="background:#6ee36e"></div></div><span class="thd-val" id="tval3-is" style="color:#6ee36e">--%</span></div>
-    <div class="thd-row"><span class="thd-label" style="color:#87ceeb">I-T</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-it" style="background:#87ceeb"></div></div><span class="thd-val" id="tval3-it" style="color:#87ceeb">--%</span></div>
-    <div style="font-size:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3)">
-      Status: <strong id="thd3-status">--</strong>
-    </div>
+ <!-- THD Bars: 3-Phase -->
+<div class="section-label">THD 3-Phase</div>
+<div class="thd-panel">
+  <div class="chart-title" style="margin-bottom:10px">Total Harmonic Distortion Analysis — 3 Phase</div>
+  <div class="thd-row"><span class="thd-label" style="color:var(--danger)">V-RS (LL)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vrs" style="background:var(--danger)"></div></div><span class="thd-val" id="tval3-vrs" style="color:var(--danger)">--%</span></div>
+  <div class="thd-row"><span class="thd-label" style="color:var(--accent2)">V-ST (LL)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vst" style="background:var(--accent2)"></div></div><span class="thd-val" id="tval3-vst" style="color:var(--accent2)">--%</span></div>
+  <div class="thd-row"><span class="thd-label" style="color:var(--accent)">V-TR (LL)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-vtr" style="background:var(--accent)"></div></div><span class="thd-val" id="tval3-vtr" style="color:var(--accent)">--%</span></div>
+  <div class="thd-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span class="thd-label" style="color:#ff8c69">I-R (3P)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-ir" style="background:#ff8c69"></div></div><span class="thd-val" id="tval3-ir" style="color:#ff8c69">--%</span></div>
+  <div class="thd-row"><span class="thd-label" style="color:#6ee36e">I-S (3P)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-is" style="background:#6ee36e"></div></div><span class="thd-val" id="tval3-is" style="color:#6ee36e">--%</span></div>
+  <div class="thd-row"><span class="thd-label" style="color:#87ceeb">I-T (3P)</span><div class="thd-bar-track"><div class="thd-bar-fill" id="tbar3-it" style="background:#87ceeb"></div></div><span class="thd-val" id="tval3-it" style="color:#87ceeb">--%</span></div>
+  <div style="font-size:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3)">
+    Status: <strong id="thd3-status">--</strong>
   </div>
+</div>
 
 </div><!-- end realtime page -->
 
@@ -957,11 +964,44 @@ function chartHistOptions(title) {
     responsive:true, maintainAspectRatio:false, animation:{duration:400},
     plugins:{
       legend:{labels:{color:'#8b949e',font:{family:'Rajdhani',size:11},boxWidth:10}},
-      title:{display:false}
+      title:{display:false},
+      tooltip:{
+        enabled:true,
+        backgroundColor:'rgba(22,27,34,0.95)',
+        borderColor:'rgba(48,54,61,0.9)',
+        borderWidth:1,
+        titleColor:'#8b949e',
+        bodyColor:'#e6edf3',
+        titleFont:{family:'Rajdhani',size:11,weight:'600'},
+        bodyFont:{family:'JetBrains Mono',size:11},
+        padding:10,
+        callbacks:{
+          title: ctx => '🕐 ' + ctx[0].label,
+          label: ctx => {
+            const ds = ctx.dataset.label || '';
+            const val = ctx.parsed.y;
+            if(val == null) return ds + ': --';
+            const unit = ds.startsWith('V') ? 'V' : ds.startsWith('I') ? 'A' : ds.startsWith('P') ? 'kW' : ds === 'kWh' ? ' kWh' : '';
+            return `  ${ds}: ${val.toFixed(2)} ${unit}`;
+          }
+        }
+      }
     },
+    interaction:{ mode:'index', intersect:false },
     scales:{
       x:{ticks:{color:'#6e7681',font:{size:8},maxTicksLimit:12,maxRotation:0},grid:{color:'rgba(48,54,61,0.6)'}},
       y:{ticks:{color:'#6e7681',font:{size:9}},grid:{color:'rgba(48,54,61,0.6)'}}
+    },
+    onClick:(evt, elements, chart) => {
+      if(!elements.length) return;
+      const i = elements[0].index;
+      const label = chart.data.labels[i];
+      const values = chart.data.datasets.map(ds => ({
+        name: ds.label,
+        val: ds.data[i],
+        color: ds.borderColor
+      }));
+      showClickInfo(label, values);
     }
   };
 }
@@ -1328,10 +1368,45 @@ function pushFaultBuffer(d) {
 function chartOpts(yLabel='') {
   return {
     responsive:true, maintainAspectRatio:false, animation:{duration:300},
-    plugins:{legend:{labels:{color:'#8b949e',font:{family:'Rajdhani',size:11},boxWidth:10}}},
+    plugins:{
+      legend:{labels:{color:'#8b949e',font:{family:'Rajdhani',size:11},boxWidth:10}},
+      tooltip:{
+        enabled:true,
+        backgroundColor:'rgba(22,27,34,0.95)',
+        borderColor:'rgba(48,54,61,0.9)',
+        borderWidth:1,
+        titleColor:'#8b949e',
+        bodyColor:'#e6edf3',
+        titleFont:{family:'Rajdhani',size:11,weight:'600'},
+        bodyFont:{family:'JetBrains Mono',size:11},
+        padding:10,
+        callbacks:{
+          title: ctx => '🕐 ' + ctx[0].label,
+          label: ctx => {
+            const ds = ctx.dataset.label || '';
+            const val = ctx.parsed.y;
+            if(val == null) return ds + ': --';
+            const unit = ds.startsWith('V') ? 'V' : ds.startsWith('I') || ds.startsWith('A') ? 'A' : ds.startsWith('P') ? 'kW' : ds.startsWith('k') ? ' kWh' : '%';
+            return `  ${ds}: ${val.toFixed(2)} ${unit}`;
+          }
+        }
+      }
+    },
+    interaction:{ mode:'index', intersect:false },
     scales:{
       x:{ticks:{color:'#6e7681',font:{size:8},maxTicksLimit:8,maxRotation:0},grid:{color:'rgba(48,54,61,0.6)'}},
       y:{ticks:{color:'#6e7681',font:{size:9}},grid:{color:'rgba(48,54,61,0.6)'},title:{display:!!yLabel,text:yLabel,color:'#6e7681',font:{size:9}}}
+    },
+    onClick:(evt, elements, chart) => {
+      if(!elements.length) return;
+      const i = elements[0].index;
+      const label = chart.data.labels[i];
+      const values = chart.data.datasets.map(ds => ({
+        name: ds.label,
+        val: ds.data[i],
+        color: ds.borderColor
+      }));
+      showClickInfo(label, values);
     }
   };
 }
@@ -1508,6 +1583,52 @@ function updateClock(){
   document.getElementById('clock').textContent=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 
+// =============================================================
+// CLICK INFO POPUP
+// =============================================================
+function showClickInfo(label, values) {
+  let box = document.getElementById('click-info-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'click-info-box';
+    box.style.cssText = `
+      position:fixed;bottom:20px;right:20px;z-index:9999;
+      background:rgba(22,27,34,0.97);border:1px solid rgba(88,166,255,0.35);
+      border-radius:8px;padding:12px 14px;min-width:200px;max-width:280px;
+      font-family:'JetBrains Mono',monospace;font-size:11px;
+      box-shadow:0 4px 24px rgba(0,0,0,0.5);
+      animation:slideIn 0.15s ease;
+    `;
+    document.body.appendChild(box);
+  }
+
+  const rows = values.map(({name, val, color}) => {
+    if(val == null || isNaN(val)) return '';
+    const unit = name.startsWith('V') ? 'V' : name.startsWith('I')||name.startsWith('A') ? 'A' : name.startsWith('P') ? 'kW' : name==='kWh' ? ' kWh' : '';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:12px;">
+      <span style="color:${color||'#8b949e'}">${name}</span>
+      <span style="color:#e6edf3;font-weight:600">${Number(val).toFixed(2)}<span style="color:#6e7681;font-size:10px"> ${unit}</span></span>
+    </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid rgba(48,54,61,0.9)">
+      <span style="color:#58a6ff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;">🕐 ${label}</span>
+      <span onclick="document.getElementById('click-info-box').style.display='none'"
+        style="cursor:pointer;color:#6e7681;font-size:14px;line-height:1;padding:0 2px;">✕</span>
+    </div>
+    ${rows}
+    <div style="margin-top:8px;padding-top:7px;border-top:1px solid rgba(48,54,61,0.9);color:#6e7681;font-size:9px;font-family:'Rajdhani',sans-serif;">
+      Klik area lain di grafik untuk update
+    </div>
+  `;
+  box.style.display = 'block';
+
+  // Auto-hide setelah 8 detik
+  clearTimeout(box._hideTimer);
+  box._hideTimer = setTimeout(() => { if(box) box.style.display='none'; }, 8000);
+}
+  
 // =============================================================
 // MAIN
 // =============================================================
