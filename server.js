@@ -428,7 +428,11 @@ if (req.method === 'POST' && req.url === '/api/telegram') {
             '  R: ' + Number(d.thdAmpR||0).toFixed(2) + '%' +
             '  S: ' + Number(d.thdAmpS||0).toFixed(2) + '%' +
             '  T: ' + Number(d.thdAmpT||0).toFixed(2) + '%\n\n' +
-            'WiFi: ' + (d.rssi||'--') + ' dBm | Heap: ' + (d.heap||'--') + ' KB';
+            'THD Arus 3-Phase:\n' +
+            '  R: ' + Number(d.thdAmpR_3p||0).toFixed(2) + '%' +
+            '  S: ' + Number(d.thdAmpS_3p||0).toFixed(2) + '%' +
+            '  T: ' + Number(d.thdAmpT_3p||0).toFixed(2) + '%\n\n' +
+            'Ethernet: ' + (d.ip||'--') + ' | Heap: ' + (d.heap||'--') + ' KB';
           await sendTelegramTo(chatId, reply);
         }
 
