@@ -285,9 +285,10 @@ const httpServer = http.createServer(async (req, res) => {
 
   // ── GET /api/history?days=7  (grafik historis) ───────────
   if (req.method === 'GET' && req.url.startsWith('/api/history')) {
-    const params  = new URL(req.url, 'http://localhost');
-    const days    = Math.min(30, Math.max(1, parseInt(params.get('days') || '7', 10)));
-    const cutoff  = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const qIdx = req.url.indexOf('?');
+    const qs   = qIdx >= 0 ? req.url.slice(qIdx + 1) : '';
+    const params = new URLSearchParams(qs);
+    const days   = Math.min(30, Math.max(1, parseInt(params.get('days') || '7', 10)));
 
     if (!SUPABASE_URL) {
       jsonRes(res, 503, { error: 'Supabase not configured' });
@@ -309,9 +310,10 @@ const httpServer = http.createServer(async (req, res) => {
 
   // ── GET /api/alarms?days=7  (riwayat alarm) ──────────────
   if (req.method === 'GET' && req.url.startsWith('/api/alarms')) {
-    const params  = new URL(req.url, 'http://localhost');
-    const days    = Math.min(30, Math.max(1, parseInt(params.get('days') || '7', 10)));
-    const cutoff  = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const qIdx = req.url.indexOf('?');
+    const qs   = qIdx >= 0 ? req.url.slice(qIdx + 1) : '';
+    const params = new URLSearchParams(qs);
+    const days   = Math.min(30, Math.max(1, parseInt(params.get('days') || '7', 10)));
 
     if (!SUPABASE_URL) {
       jsonRes(res, 503, { error: 'Supabase not configured' });
