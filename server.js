@@ -18,8 +18,6 @@
 
 const http    = require('http');
 const https   = require('https');
-const fs      = require('fs');
-const path    = require('path');
 
 const PORT = process.env.PORT || 3000;
 
@@ -546,21 +544,6 @@ if (req.method === 'POST' && req.url === '/api/telegram') {
       supabase: !!SUPABASE_URL,
       telegram: !!TG_TOKEN && TG_CHAT_IDS.length > 0,
       chatIds:  TG_CHAT_IDS.length,
-    });
-    return;
-  }
-
-  // ── GET /  (serve dashboard HTML) ────────────────────────
-  if (req.method === 'GET' && (req.url === '/' || req.url === '/index.html')) {
-    const filePath = path.join(__dirname, 'public', 'index.html');
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(404);
-        res.end('Dashboard not found. Taruh file HTML di folder public/index.html');
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(data);
     });
     return;
   }
