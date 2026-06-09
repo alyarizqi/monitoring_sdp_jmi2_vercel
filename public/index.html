@@ -6,6 +6,7 @@
 <title>ESP32 PowerLogic Monitor — PM5350</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -50,6 +51,7 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 .api-btn-test:hover{background:rgba(248,81,73,0.22);}
 .api-btn-warn{background:rgba(210,153,34,0.12);border-color:rgba(238, 211, 57, 0.5);color:var(--warn);}
 .api-btn-warn:hover{background:rgba(210,153,34,0.22);}
+
 .poll-chip{font-size:10px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--font-title);}
 #poll-countdown{font-weight:700;color:var(--accent);}
 
@@ -234,6 +236,13 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
       <input type="checkbox" id="sim-toggle" checked onchange="toggleSim(this.checked)" style="accent-color:var(--accent)"/>
       <span style="font-family:var(--font-title);font-weight:600;font-size:10px">SIMULASI</span>
     </label>
+    <span style="width:1px;height:16px;background:var(--border);margin:0 4px;"></span>
+    <input type="date" id="export-date" style="background:var(--bg2);border:1px solid var(--border);color:var(--text1);padding:3px 7px;border-radius:4px;font-family:var(--font-mono);font-size:11px;"/>
+    <button id="btn-export" onclick="exportExcel()" disabled
+      style="padding:3px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-title);font-weight:600;font-size:11px;border:1px solid;background:rgba(46,125,50,0.12);border-color:rgba(46,125,50,0.4);color:var(--accent2);transition:all 0.15s;"
+      title="Export data ke Excel (hanya saat Live)">📥 Export Excel</button>
+    <span id="export-status" style="font-size:10px;color:var(--text3);"></span>
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2)">
   </div>
 </div>
 
@@ -1103,6 +1112,7 @@ function toggleSim(on) {
     if (simInterval) { clearInterval(simInterval); simInterval = null; }
     if (apiUrl) startPolling();
   }
+   updateExportBtn();
 }
 
 // =============================================================
@@ -1631,12 +1641,161 @@ function showClickInfo(label, values) {
   clearTimeout(box._hideTimer);
   box._hideTimer = setTimeout(() => { if(box) box.style.display='none'; }, 8000);
 }
+
+// =============================================================
+// EXPORT EXCEL
+// =============================================================
+function updateExportBtn() {
+  const btn = document.getElementById('btn-export');
+  if (btn) btn.disabled = simMode;
+}
+
+async function exportExcel() {
+  const dateInput = document.getElementById('export-date');
+  const statusEl  = document.getElementById('export-status');
+  const btn       = document.getElementById('btn-export');
+
+  if (simMode) {
+    statusEl.textContent = '⚠ Hanya tersedia saat Live';
+    statusEl.style.color = 'var(--warn)';
+    return;
+  }
+
+  const selectedDate = dateInput.value; // format: YYYY-MM-DD
+  if (!selectedDate) {
+    statusEl.textContent = '⚠ Pilih tanggal dulu';
+    statusEl.style.color = 'var(--warn)';
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.textContent = '⏳ Mengambil data...';
+  statusEl.style.color = 'var(--text3)';
+
+  try {
+    // Ambil data 7 hari, lalu filter di browser berdasarkan tanggal yang dipilih
+    const res = await fetch(apiUrl + '/api/history?days=7', { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const allRows = await res.json();
+
+    // Filter hanya baris yang created_at-nya sesuai tanggal yang dipilih
+    const filtered = allRows.filter(r => {
+      if (!r.created_at) return false;
+      return r.created_at.startsWith(selectedDate);
+    });
+
+    if (!filtered.length) {
+      statusEl.textContent = '⚠ Tidak ada data untuk tanggal ' + selectedDate;
+      statusEl.style.color = 'var(--warn)';
+      btn.disabled = false;
+      return;
+    }
+
+    // Map kolom Supabase ke header Excel yang rapi
+    const colMap = [
+      ['Timestamp',          r => r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '--'],
+      ['V-R (V)',             r => r.volt_r],
+      ['V-S (V)',             r => r.volt_s],
+      ['V-T (V)',             r => r.volt_t],
+      ['V-RS (V)',            r => r.volt_rs],
+      ['V-ST (V)',            r => r.volt_st],
+      ['V-TR (V)',            r => r.volt_tr],
+      ['I-R (A)',             r => r.amp_r],
+      ['I-S (A)',             r => r.amp_s],
+      ['I-T (A)',             r => r.amp_t],
+      ['I-3P (A)',            r => r.amp_3p],
+      ['P-R (kW)',            r => r.power_r],
+      ['P-S (kW)',            r => r.power_s],
+      ['P-T (kW)',            r => r.power_t],
+      ['P-3P (kW)',           r => r.power_3p],
+      ['kWh',                 r => r.kwh],
+      ['Freq (Hz)',           r => r.freq],
+      ['THD V-R (%)',         r => r.thd_volt_r],
+      ['THD V-S (%)',         r => r.thd_volt_s],
+      ['THD V-T (%)',         r => r.thd_volt_t],
+      ['THD V-RS (%)',        r => r.thd_volt_rs],
+      ['THD V-ST (%)',        r => r.thd_volt_st],
+      ['THD V-TR (%)',        r => r.thd_volt_tr],
+      ['THD I-R (%)',         r => r.thd_amp_r],
+      ['THD I-S (%)',         r => r.thd_amp_s],
+      ['THD I-T (%)',         r => r.thd_amp_t],
+      ['OV THD Val R (%)',    r => r.ov_thd_val_r],
+      ['OV THD Val S (%)',    r => r.ov_thd_val_s],
+      ['OV THD Val T (%)',    r => r.ov_thd_val_t],
+      ['PhaseLoss Val R (V)', r => r.phase_loss_val_r],
+      ['PhaseLoss Val S (V)', r => r.phase_loss_val_s],
+      ['PhaseLoss Val T (V)', r => r.phase_loss_val_t],
+      ['OV LL Val RS (V)',    r => r.ov_volt_ll_val_rs],
+      ['OV LL Val ST (V)',    r => r.ov_volt_ll_val_st],
+      ['OV LL Val TR (V)',    r => r.ov_volt_ll_val_tr],
+      ['OV LL Pickup (V)',    r => r.ov_volt_ll_pickup],
+      ['OV LL Dropout (V)',   r => r.ov_volt_ll_dropout],
+      ['UV LL Val RS (V)',    r => r.uv_volt_ll_val_rs],
+      ['UV LL Val ST (V)',    r => r.uv_volt_ll_val_st],
+      ['UV LL Val TR (V)',    r => r.uv_volt_ll_val_tr],
+      ['UV LL Pickup (V)',    r => r.uv_volt_ll_pickup],
+      ['UV LL Dropout (V)',   r => r.uv_volt_ll_dropout],
+      ['OV LN Val R (V)',     r => r.ov_volt_ln_val_r],
+      ['OV LN Val S (V)',     r => r.ov_volt_ln_val_s],
+      ['OV LN Val T (V)',     r => r.ov_volt_ln_val_t],
+      ['OV LN Pickup (V)',    r => r.ov_volt_ln_pickup],
+      ['OV LN Dropout (V)',   r => r.ov_volt_ln_dropout],
+      ['UV LN Val R (V)',     r => r.uv_volt_ln_val_r],
+      ['UV LN Val S (V)',     r => r.uv_volt_ln_val_s],
+      ['UV LN Val T (V)',     r => r.uv_volt_ln_val_t],
+      ['UV LN Pickup (V)',    r => r.uv_volt_ln_pickup],
+      ['UV LN Dropout (V)',   r => r.uv_volt_ln_dropout],
+      ['Uptime (s)',          r => r.uptime],
+      ['Heap (KB)',           r => r.heap],
+      ['Temp (°C)',           r => r.temp],
+      ['IP',                  r => r.ip],
+    ];
+
+    // Buat array of objects untuk SheetJS
+    const sheetData = filtered.map(r => {
+      const row = {};
+      colMap.forEach(([header, getter]) => {
+        const val = getter(r);
+        row[header] = (val === null || val === undefined) ? '' : val;
+      });
+      return row;
+    });
+
+    // Buat workbook
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(sheetData, { header: colMap.map(([h]) => h) });
+
+    // Set lebar kolom otomatis (estimasi)
+    ws['!cols'] = colMap.map(([h]) => ({ wch: Math.max(h.length + 2, 12) }));
+
+    XLSX.utils.book_append_sheet(wb, ws, 'PM5350 Data');
+
+    // Nama file: PM5350_YYYYMMDD.xlsx
+    const fileName = 'PM5350_' + selectedDate.replace(/-/g, '') + '.xlsx';
+    XLSX.writeFile(wb, fileName);
+
+    statusEl.textContent = '✓ ' + filtered.length.toLocaleString() + ' baris diexport';
+    statusEl.style.color = 'var(--accent2)';
+    setTimeout(() => { statusEl.textContent = ''; }, 5000);
+
+  } catch(e) {
+    statusEl.textContent = '✗ Gagal: ' + e.message;
+    statusEl.style.color = 'var(--danger)';
+  } finally {
+    btn.disabled = simMode;
+  }
+}
   
 // =============================================================
 // MAIN
 // =============================================================
 function main(){
   loadApiUrl();
+  // Set default export date ke hari ini
+  const today = new Date().toISOString().split('T')[0];
+  const exportDateEl = document.getElementById('export-date');
+  if (exportDateEl) exportDateEl.value = today;
+  
   initRealTimeCharts();
   wave1Frame=drawWave('wave1Canvas',wave1Phase,()=>wave1Mode,null);
   wave3Frame=drawWave('wave3Canvas',wave3Phase,()=>wave3Mode,null);
