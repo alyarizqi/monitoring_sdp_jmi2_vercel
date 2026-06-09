@@ -10,8 +10,8 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#f2fff6;--bg2:#e2f5f3;--bg3:#dae8fb;--border:rgba(164,203,227,0.9);
-  --accent:#3e4b8e;--accent2:#238689;--warn:#f6e0b6;--danger:#f85149;--purple:#333c77;
+  --bg:#f2fff6;--bg2:#b6d6ff;--bg3:#f9fcff;--border:rgba(254,255,175,0.9);
+  --accent:#f4adcf;--accent2:#b2f9e7;--warn:#ffe18a;--danger:#f85149;--purple:#bfc4ff;
   --text1:#001b29;--text2:#2a333a;--text3:#334856;
   --font-mono:'JetBrains Mono',monospace;--font-title:'Rajdhani',sans-serif;--radius:8px;
 }
@@ -48,7 +48,7 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 .api-btn-save:hover{background:rgba(88,166,255,0.25);}
 .api-btn-test{background:rgba(248,81,73,0.12);border-color:rgba(248,81,73,0.35);color:var(--danger);}
 .api-btn-test:hover{background:rgba(248,81,73,0.22);}
-.api-btn-warn{background:rgba(210,153,34,0.12);border-color:rgba(210,153,34,0.35);color:var(--warn);}
+.api-btn-warn{background:rgba(210,153,34,0.12);border-color:rgba(238, 211, 57, 0.5);color:var(--warn);}
 .api-btn-warn:hover{background:rgba(210,153,34,0.22);}
 .poll-chip{font-size:10px;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-family:var(--font-title);}
 #poll-countdown{font-weight:700;color:var(--accent);}
@@ -108,9 +108,9 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 .fault-desc{font-size:10px;color:var(--text3);margin-top:2px;}
 .fault-status{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
 .fault-led{width:10px;height:10px;border-radius:50%;}
-.led-ok{background:var(--accent2);box-shadow:0 0 6px rgba(63,185,80,0.5);}
-.led-warn{background:var(--warn);box-shadow:0 0 6px rgba(210,153,34,0.5);animation:blink 1s infinite;}
-.led-danger{background:var(--danger);box-shadow:0 0 6px rgba(248,81,73,0.5);animation:blink 0.5s infinite;}
+.led-ok{background:var(--accent2);box-shadow:0 0 6px rgba(63,185,80,0.3);}
+.led-warn{background:var(--warn);box-shadow:0 0 6px rgba(210,153,34,0.3);animation:blink 1s infinite;}
+.led-danger{background:var(--danger);box-shadow:0 0 6px rgba(248,81,73,0.3);animation:blink 0.5s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 
 /* ESP PANEL */
@@ -153,7 +153,7 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 .col2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
 .alert-banner{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);margin-bottom:12px;border:1px solid;font-size:11px;}
-.alert-banner.warn{background:rgba(210,153,34,0.08);border-color:rgba(210,153,34,0.3);color:#e3b341;}
+.alert-banner.warn{background:rgba(210,153,34,0.08);border-color:rgba(210,153,34,0.3);color:#ffe18a;}
 .alert-banner.danger{background:rgba(248,81,73,0.08);border-color:rgba(248,81,73,0.3);color:var(--danger);}
 .alert-close{margin-left:auto;cursor:pointer;opacity:0.6;}
 
