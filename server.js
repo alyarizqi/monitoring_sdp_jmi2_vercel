@@ -298,7 +298,7 @@ const httpServer = http.createServer(async (req, res) => {
 
     try {
       const rows = await supabaseFetch(
-        `/pm_readings?created_at=gte.${cutoff}&order=created_at.asc&select=created_at,volt_r,volt_s,volt_t,volt_rs,volt_st,volt_tr,amp_r,amp_s,amp_t,power_3p,kwh`,
+        `/pm_readings?created_at=gte.${cutoff}&order=created_at.asc&select=*`,
         { prefer: 'return=representation', headers: { 'Range-Unit': 'items', 'Range': '0-60479' } }
       );
       jsonRes(res, 200, rows);
