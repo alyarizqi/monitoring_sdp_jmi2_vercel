@@ -1649,8 +1649,9 @@ function showClickInfo(label, values) {
 // =============================================================
 function updateExportBtn() {
   const btn = document.getElementById('btn-export');
+  if (!btn) return;
   const isLive = document.getElementById('api-pill-txt')?.textContent === 'API LIVE';
-  if (btn) btn.disabled = !isLive;
+  btn.disabled = !isLive;
 }
 
 async function exportExcel() {
@@ -1684,13 +1685,12 @@ async function exportExcel() {
 
     // FIX TIMEZONE: konversi created_at ke tanggal WIB (UTC+7) sebelum filter
     const filtered = allRows.filter(r => {
-      if (!r.created_at) return false;
+    if (!r.created_at) return false;
       // Tambah 7 jam untuk konversi UTC → WIB
-      const wibDate = new Date(new Date(r.created_at).getTime() + 7 * 60 * 60 * 1000);
-      const wibDateStr = wibDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      const wibMs = new Date(r.created_at).getTime() + 7 * 60 * 60 * 1000;
+      const wibDateStr = new Date(wibMs).toISOString().slice(0, 10);
       return wibDateStr === selectedDate;
     });
-
     if (!filtered.length) {
       statusEl.textContent = '⚠ Tidak ada data untuk tanggal ' + selectedDate;
       statusEl.style.color = 'var(--warn)';
@@ -1783,7 +1783,7 @@ async function exportExcel() {
     statusEl.textContent = '✗ Gagal: ' + e.message;
     statusEl.style.color = 'var(--danger)';
   } finally {
-    btn.disabled = false; // FIX: jangan pakai simMode di sini
+    updateExportBtn();
   }
 }
   
