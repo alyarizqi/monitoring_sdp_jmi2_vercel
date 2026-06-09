@@ -783,6 +783,8 @@ function setApiStatus(state, msg) {
   if (onlineTxt) onlineTxt.textContent = state === 'live' ? 'LIVE' : 'SIMULASI';
   if (espTxt) espTxt.textContent = state === 'live' ? 'RUNNING' : 'SIMULASI';
   txt.style.color = state === 'live' ? 'var(--accent2)' : state === 'connecting' ? 'var(--warn)' : 'var(--text3)';
+
+  updateExportBtn();
 }
 
 // =============================================================
@@ -1647,7 +1649,8 @@ function showClickInfo(label, values) {
 // =============================================================
 function updateExportBtn() {
   const btn = document.getElementById('btn-export');
-  if (btn) btn.disabled = simMode;
+  const isLive = document.getElementById('api-pill-txt')?.textContent === 'API LIVE';
+  if (btn) btn.disabled = !isLive;
 }
 
 async function exportExcel() {
@@ -1655,13 +1658,15 @@ async function exportExcel() {
   const statusEl  = document.getElementById('export-status');
   const btn       = document.getElementById('btn-export');
 
-  if (simMode) {
+  // FIX: izinkan export kalau API live, meski simMode belum false sempurna
+  const isLive = !!apiUrl && document.getElementById('api-pill-txt')?.textContent === 'API LIVE';
+  if (!isLive) {
     statusEl.textContent = '⚠ Hanya tersedia saat Live';
     statusEl.style.color = 'var(--warn)';
     return;
   }
 
-  const selectedDate = dateInput.value; // format: YYYY-MM-DD
+  const selectedDate = dateInput.value; // format: YYYY-MM-DD (tanggal WIB dari user)
   if (!selectedDate) {
     statusEl.textContent = '⚠ Pilih tanggal dulu';
     statusEl.style.color = 'var(--warn)';
@@ -1673,15 +1678,17 @@ async function exportExcel() {
   statusEl.style.color = 'var(--text3)';
 
   try {
-    // Ambil data 7 hari, lalu filter di browser berdasarkan tanggal yang dipilih
     const res = await fetch(apiUrl + '/api/history?days=7', { signal: AbortSignal.timeout(15000) });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const allRows = await res.json();
 
-    // Filter hanya baris yang created_at-nya sesuai tanggal yang dipilih
+    // FIX TIMEZONE: konversi created_at ke tanggal WIB (UTC+7) sebelum filter
     const filtered = allRows.filter(r => {
       if (!r.created_at) return false;
-      return r.created_at.startsWith(selectedDate);
+      // Tambah 7 jam untuk konversi UTC → WIB
+      const wibDate = new Date(new Date(r.created_at).getTime() + 7 * 60 * 60 * 1000);
+      const wibDateStr = wibDate.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      return wibDateStr === selectedDate;
     });
 
     if (!filtered.length) {
@@ -1691,67 +1698,66 @@ async function exportExcel() {
       return;
     }
 
-    // Map kolom Supabase ke header Excel yang rapi
+    // Kolom map — pakai snake_case (dari Supabase select=*)
     const colMap = [
-      ['Timestamp',          r => r.created_at ? new Date(r.created_at).toLocaleString('id-ID') : '--'],
-      ['V-R (V)',             r => r.volt_r],
-      ['V-S (V)',             r => r.volt_s],
-      ['V-T (V)',             r => r.volt_t],
-      ['V-RS (V)',            r => r.volt_rs],
-      ['V-ST (V)',            r => r.volt_st],
-      ['V-TR (V)',            r => r.volt_tr],
-      ['I-R (A)',             r => r.amp_r],
-      ['I-S (A)',             r => r.amp_s],
-      ['I-T (A)',             r => r.amp_t],
-      ['I-3P (A)',            r => r.amp_3p],
-      ['P-R (kW)',            r => r.power_r],
-      ['P-S (kW)',            r => r.power_s],
-      ['P-T (kW)',            r => r.power_t],
-      ['P-3P (kW)',           r => r.power_3p],
-      ['kWh',                 r => r.kwh],
-      ['Freq (Hz)',           r => r.freq],
-      ['THD V-R (%)',         r => r.thd_volt_r],
-      ['THD V-S (%)',         r => r.thd_volt_s],
-      ['THD V-T (%)',         r => r.thd_volt_t],
-      ['THD V-RS (%)',        r => r.thd_volt_rs],
-      ['THD V-ST (%)',        r => r.thd_volt_st],
-      ['THD V-TR (%)',        r => r.thd_volt_tr],
-      ['THD I-R (%)',         r => r.thd_amp_r],
-      ['THD I-S (%)',         r => r.thd_amp_s],
-      ['THD I-T (%)',         r => r.thd_amp_t],
-      ['OV THD Val R (%)',    r => r.ov_thd_val_r],
-      ['OV THD Val S (%)',    r => r.ov_thd_val_s],
-      ['OV THD Val T (%)',    r => r.ov_thd_val_t],
-      ['PhaseLoss Val R (V)', r => r.phase_loss_val_r],
-      ['PhaseLoss Val S (V)', r => r.phase_loss_val_s],
-      ['PhaseLoss Val T (V)', r => r.phase_loss_val_t],
-      ['OV LL Val RS (V)',    r => r.ov_volt_ll_val_rs],
-      ['OV LL Val ST (V)',    r => r.ov_volt_ll_val_st],
-      ['OV LL Val TR (V)',    r => r.ov_volt_ll_val_tr],
-      ['OV LL Pickup (V)',    r => r.ov_volt_ll_pickup],
-      ['OV LL Dropout (V)',   r => r.ov_volt_ll_dropout],
-      ['UV LL Val RS (V)',    r => r.uv_volt_ll_val_rs],
-      ['UV LL Val ST (V)',    r => r.uv_volt_ll_val_st],
-      ['UV LL Val TR (V)',    r => r.uv_volt_ll_val_tr],
-      ['UV LL Pickup (V)',    r => r.uv_volt_ll_pickup],
-      ['UV LL Dropout (V)',   r => r.uv_volt_ll_dropout],
-      ['OV LN Val R (V)',     r => r.ov_volt_ln_val_r],
-      ['OV LN Val S (V)',     r => r.ov_volt_ln_val_s],
-      ['OV LN Val T (V)',     r => r.ov_volt_ln_val_t],
-      ['OV LN Pickup (V)',    r => r.ov_volt_ln_pickup],
-      ['OV LN Dropout (V)',   r => r.ov_volt_ln_dropout],
-      ['UV LN Val R (V)',     r => r.uv_volt_ln_val_r],
-      ['UV LN Val S (V)',     r => r.uv_volt_ln_val_s],
-      ['UV LN Val T (V)',     r => r.uv_volt_ln_val_t],
-      ['UV LN Pickup (V)',    r => r.uv_volt_ln_pickup],
-      ['UV LN Dropout (V)',   r => r.uv_volt_ln_dropout],
-      ['Uptime (s)',          r => r.uptime],
-      ['Heap (KB)',           r => r.heap],
-      ['Temp (°C)',           r => r.temp],
-      ['IP',                  r => r.ip],
+      ['Timestamp (WIB)',    r => { const d = new Date(new Date(r.created_at).getTime() + 7*3600000); return d.toISOString().replace('T',' ').slice(0,19); }],
+      ['V-R (V)',            r => r.volt_r],
+      ['V-S (V)',            r => r.volt_s],
+      ['V-T (V)',            r => r.volt_t],
+      ['V-RS (V)',           r => r.volt_rs],
+      ['V-ST (V)',           r => r.volt_st],
+      ['V-TR (V)',           r => r.volt_tr],
+      ['I-R (A)',            r => r.amp_r],
+      ['I-S (A)',            r => r.amp_s],
+      ['I-T (A)',            r => r.amp_t],
+      ['I-3P (A)',           r => r.amp_3p],
+      ['P-R (kW)',           r => r.power_r],
+      ['P-S (kW)',           r => r.power_s],
+      ['P-T (kW)',           r => r.power_t],
+      ['P-3P (kW)',          r => r.power_3p],
+      ['kWh',               r => r.kwh],
+      ['Freq (Hz)',          r => r.freq],
+      ['THD V-R (%)',        r => r.thd_volt_r],
+      ['THD V-S (%)',        r => r.thd_volt_s],
+      ['THD V-T (%)',        r => r.thd_volt_t],
+      ['THD V-RS (%)',       r => r.thd_volt_rs],
+      ['THD V-ST (%)',       r => r.thd_volt_st],
+      ['THD V-TR (%)',       r => r.thd_volt_tr],
+      ['THD I-R (%)',        r => r.thd_amp_r],
+      ['THD I-S (%)',        r => r.thd_amp_s],
+      ['THD I-T (%)',        r => r.thd_amp_t],
+      ['OV THD Val R (%)',   r => r.ov_thd_val_r],
+      ['OV THD Val S (%)',   r => r.ov_thd_val_s],
+      ['OV THD Val T (%)',   r => r.ov_thd_val_t],
+      ['PhaseLoss R (V)',    r => r.phase_loss_val_r],
+      ['PhaseLoss S (V)',    r => r.phase_loss_val_s],
+      ['PhaseLoss T (V)',    r => r.phase_loss_val_t],
+      ['OV LL RS (V)',       r => r.ov_volt_ll_val_rs],
+      ['OV LL ST (V)',       r => r.ov_volt_ll_val_st],
+      ['OV LL TR (V)',       r => r.ov_volt_ll_val_tr],
+      ['OV LL Pickup (V)',   r => r.ov_volt_ll_pickup],
+      ['OV LL Dropout (V)',  r => r.ov_volt_ll_dropout],
+      ['UV LL RS (V)',       r => r.uv_volt_ll_val_rs],
+      ['UV LL ST (V)',       r => r.uv_volt_ll_val_st],
+      ['UV LL TR (V)',       r => r.uv_volt_ll_val_tr],
+      ['UV LL Pickup (V)',   r => r.uv_volt_ll_pickup],
+      ['UV LL Dropout (V)',  r => r.uv_volt_ll_dropout],
+      ['OV LN R (V)',        r => r.ov_volt_ln_val_r],
+      ['OV LN S (V)',        r => r.ov_volt_ln_val_s],
+      ['OV LN T (V)',        r => r.ov_volt_ln_val_t],
+      ['OV LN Pickup (V)',   r => r.ov_volt_ln_pickup],
+      ['OV LN Dropout (V)',  r => r.ov_volt_ln_dropout],
+      ['UV LN R (V)',        r => r.uv_volt_ln_val_r],
+      ['UV LN S (V)',        r => r.uv_volt_ln_val_s],
+      ['UV LN T (V)',        r => r.uv_volt_ln_val_t],
+      ['UV LN Pickup (V)',   r => r.uv_volt_ln_pickup],
+      ['UV LN Dropout (V)',  r => r.uv_volt_ln_dropout],
+      ['Uptime (s)',         r => r.uptime],
+      ['Heap (KB)',          r => r.heap],
+      ['Temp (°C)',          r => r.temp],
+      ['IP',                 r => r.ip],
     ];
 
-    // Buat array of objects untuk SheetJS
     const sheetData = filtered.map(r => {
       const row = {};
       colMap.forEach(([header, getter]) => {
@@ -1761,16 +1767,11 @@ async function exportExcel() {
       return row;
     });
 
-    // Buat workbook
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(sheetData, { header: colMap.map(([h]) => h) });
-
-    // Set lebar kolom otomatis (estimasi)
     ws['!cols'] = colMap.map(([h]) => ({ wch: Math.max(h.length + 2, 12) }));
-
     XLSX.utils.book_append_sheet(wb, ws, 'PM5350 Data');
 
-    // Nama file: PM5350_YYYYMMDD.xlsx
     const fileName = 'PM5350_' + selectedDate.replace(/-/g, '') + '.xlsx';
     XLSX.writeFile(wb, fileName);
 
@@ -1782,7 +1783,7 @@ async function exportExcel() {
     statusEl.textContent = '✗ Gagal: ' + e.message;
     statusEl.style.color = 'var(--danger)';
   } finally {
-    btn.disabled = simMode;
+    btn.disabled = false; // FIX: jangan pakai simMode di sini
   }
 }
   
