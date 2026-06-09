@@ -289,6 +289,7 @@ const httpServer = http.createServer(async (req, res) => {
     const qs   = qIdx >= 0 ? req.url.slice(qIdx + 1) : '';
     const params = new URLSearchParams(qs);
     const days   = Math.min(30, Math.max(1, parseInt(params.get('days') || '7', 10)));
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
     if (!SUPABASE_URL) {
       jsonRes(res, 503, { error: 'Supabase not configured' });
@@ -314,6 +315,7 @@ const httpServer = http.createServer(async (req, res) => {
     const qs   = qIdx >= 0 ? req.url.slice(qIdx + 1) : '';
     const params = new URLSearchParams(qs);
     const days   = Math.min(30, Math.max(1, parseInt(params.get('days') || '7', 10)));
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
     if (!SUPABASE_URL) {
       jsonRes(res, 503, { error: 'Supabase not configured' });
