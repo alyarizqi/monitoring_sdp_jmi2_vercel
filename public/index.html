@@ -1601,17 +1601,18 @@ function updateClock(){
 // =============================================================
 // CLICK INFO POPUP
 // =============================================================
-function showClickInfo(label, values) {
+Ganti fungsi showClickInfo dengan versi ini — semua warna teks sudah disesuaikan untuk background terang:
+javascriptfunction showClickInfo(label, values) {
   let box = document.getElementById('click-info-box');
   if (!box) {
     box = document.createElement('div');
     box.id = 'click-info-box';
     box.style.cssText = `
       position:fixed;bottom:20px;right:20px;z-index:9999;
-      background:rgba(168,220,234,0.75);border:1px solid rgba(168,220,234,0.35);
+      background:rgba(168,220,234,0.97);border:1px solid rgba(65,151,159,0.4);
       border-radius:8px;padding:12px 14px;min-width:200px;max-width:280px;
       font-family:'JetBrains Mono',monospace;font-size:11px;
-      box-shadow:0 4px 24px rgba(0,0,0,0.5);
+      box-shadow:0 4px 24px rgba(0,0,0,0.15);
       animation:slideIn 0.15s ease;
     `;
     document.body.appendChild(box);
@@ -1620,28 +1621,36 @@ function showClickInfo(label, values) {
   const rows = values.map(({name, val, color}) => {
     if(val == null || isNaN(val)) return '';
     const unit = name.startsWith('V') ? 'V' : name.startsWith('I')||name.startsWith('A') ? 'A' : name.startsWith('P') ? 'kW' : name==='kWh' ? ' kWh' : '';
+    // Gelapkan warna dataset agar terbaca di background terang
+    const darkColor = darkenColor(color || '#325F6A');
     return `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:12px;">
-      <span style="color:${color||'#8b949e'}">${name}</span>
-      <span style="color:#e6edf3;font-weight:600">${Number(val).toFixed(2)}<span style="color:#6e7681;font-size:10px"> ${unit}</span></span>
+      <span style="color:${darkColor};font-weight:600">${name}</span>
+      <span style="color:#081B1C;font-weight:700">${Number(val).toFixed(2)}<span style="color:#325F6A;font-size:10px"> ${unit}</span></span>
     </div>`;
   }).join('');
 
   box.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid rgba(48,54,61,0.9)">
-      <span style="color:#58a6ff;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;">🕐 ${label}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid rgba(49,103,95,0.3)">
+      <span style="color:#31675F;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;">🕐 ${label}</span>
       <span onclick="document.getElementById('click-info-box').style.display='none'"
-        style="cursor:pointer;color:#6e7681;font-size:14px;line-height:1;padding:0 2px;">✕</span>
+        style="cursor:pointer;color:#41979F;font-size:14px;line-height:1;padding:0 2px;">✕</span>
     </div>
     ${rows}
-    <div style="margin-top:8px;padding-top:7px;border-top:1px solid rgba(48,54,61,0.9);color:#6e7681;font-size:9px;font-family:'Rajdhani',sans-serif;">
+    <div style="margin-top:8px;padding-top:7px;border-top:1px solid rgba(49,103,95,0.3);color:#325F6A;font-size:9px;font-family:'Rajdhani',sans-serif;">
       Klik area lain di grafik untuk update
     </div>
   `;
   box.style.display = 'block';
-
-  // Auto-hide setelah 8 detik
   clearTimeout(box._hideTimer);
   box._hideTimer = setTimeout(() => { if(box) box.style.display='none'; }, 8000);
+}
+
+// Helper: gelapkan warna hex agar kontras di background terang
+function darkenColor(hex) {
+  const map = {
+    '#f85149': '#c0392b', '#3fb950': '#1e7e34', '#58a6ff': '#1a5fa8', '#bc8cff': '#6B4F9E', '#d29922': '#8a6100', '#ff8c69': '#c05a3a', '#6ee36e': '#2d8a2d', '#87ceeb': '#2a7fa8',
+  };
+  return map[hex] || '#173337';
 }
 
 // =============================================================
