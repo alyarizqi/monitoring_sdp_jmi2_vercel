@@ -11,22 +11,22 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#FFFBF6;--bg2:#F1DAB5;--bg3:#FDF5E8;--border:rgba(84,50,23,0.18);
-  --accent:#8B5A2B;--accent2:#2E7D32;--warn:#D4820A;--danger:#C0392B;--purple:#6B4F9E;
-  --text1:#1C0F08;--text2:#362417;--text3:#6B4A30;
+  --bg:#FFFBF6;--bg2:#F6FAFA;--bg3:#ABDCEA;--border:rgba(168,220,234,0.18);
+  --accent:#41979F;--accent2:#31675F;--warn:#D4820A;--danger:#C0392B;--purple:#6B4F9E;
+  --text1:#081B1C;--text2:#173337;--text3:#325F6A;
   --font-mono:'JetBrains Mono',monospace;--font-title:'Rajdhani',sans-serif;--radius:8px;
 }
 body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-size:13px;}
 .app{display:flex;flex-direction:column;min-height:100vh;}
 
 /* HEADER */
-.header{background:linear-gradient(135deg,#362417 0%,#4E3320 50%,#6B3E20 100%);border-bottom:1px solid rgba(180,130,80,0.4);...}
+.header{background:linear-gradient(135deg,#31675F 0%,#41979F 50%,#95CDD3 100%);border-bottom:1px solid rgba(180,130,80,0.4);...}
 .header-left{display:flex;align-items:center;gap:12px;}
-.logo-badge{background:linear-gradient(135deg,#362417,#f1dabf);border:1px solid rgba(241,218,191,1);border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:6px;}
+.logo-badge{background:linear-gradient(135deg,#31675F,#F7FBFB);border:1px solid rgba(247,251,251,0);border-radius:6px;padding:5px 10px;display:flex;align-items:center;gap:6px;}
 .logo-dot{width:8px;height:8px;background:var(--text1);border-radius:50%;animation:pulse 2s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.85)}}
 .logo-text{font-family:var(--font-title);font-size:13px;font-weight:700;color:var(--text1);letter-spacing:1px;}
-.header-title{font-family:var(--font-title);font-size:17px;font-weight:600;letter-spacing:0.5px;color:#FFFBF6;}
+.header-title{font-family:var(--font-title);font-size:17px;font-weight:600;letter-spacing:0.5px;color:#F9FDFD;}
 .header-sub{font-size:10px;color:rgba(241,218,191,0.7);margin-top:1px;}
 .status-row{display:flex;align-items:center;gap:8px;}
 .status-pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--font-title);font-weight:600;letter-spacing:0.5px;border:1px solid;}
