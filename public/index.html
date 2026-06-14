@@ -11,7 +11,7 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#FFFBF6;--bg2:#F6FAFA;--bg3:#ABDCEA;--border:rgba(168,220,234,0.18);
+  --bg:#FFFBF6;--bg2:#A8DCEA;--bg3:#F6FAFA;--border:rgba(168,220,234,0.18);
   --accent:#41979F;--accent2:#31675F;--warn:#D4820A;--danger:#C0392B;--purple:#6B4F9E;
   --text1:#081B1C;--text2:#173337;--text3:#325F6A;
   --font-mono:'JetBrains Mono',monospace;--font-title:'Rajdhani',sans-serif;--radius:8px;
@@ -26,7 +26,7 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 .logo-dot{width:8px;height:8px;background:var(--text1);border-radius:50%;animation:pulse 2s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.85)}}
 .logo-text{font-family:var(--font-title);font-size:13px;font-weight:700;color:var(--text1);letter-spacing:1px;}
-.header-title{font-family:var(--font-title);font-size:17px;font-weight:600;letter-spacing:0.5px;color:#F9FDFD;}
+.header-title{font-family:var(--font-title);font-size:17px;font-weight:600;letter-spacing:0.5px;color:#A8DCEA;}
 .header-sub{font-size:10px;color:rgba(241,218,191,0.7);margin-top:1px;}
 .status-row{display:flex;align-items:center;gap:8px;}
 .status-pill{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-family:var(--font-title);font-weight:600;letter-spacing:0.5px;border:1px solid;}
@@ -39,7 +39,7 @@ body{background:var(--bg);color:var(--text1);font-family:var(--font-mono);font-s
 .tabs{display:flex;gap:2px;padding:10px 20px 0;background:var(--bg2);border-bottom:1px solid var(--border);}
 .tab{padding:7px 14px;font-family:var(--font-title);font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);transition:all 0.2s;letter-spacing:0.3px;border-radius:4px 4px 0 0;}
 .tab:hover{color:var(--text1);background:var(--bg3);}
-.tab.active{color:#362417;border-bottom-color:#362417;background:var(--bg);}
+.tab.active{color:#F9FDFD;border-bottom-color:#A8DCEA;background:var(--bg);}
 
 /* API CONFIG BAR (ganti WS config bar) */
 #api-config-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap;}
